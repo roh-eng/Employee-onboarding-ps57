@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?><record_update table="sys_security_acl_role">
+    <sys_security_acl_role action="DELETE">
+        <sys_class_name>sys_security_acl_role</sys_class_name>
+        <sys_created_by>admin</sys_created_by>
+        <sys_created_on>2026-05-06 16:58:30</sys_created_on>
+        <sys_id>56965fb3c368431028b37cec05013182</sys_id>
+        <sys_mod_count>0</sys_mod_count>
+        <sys_name>x_1850353_employ_0_employee.x_1850353_employ_0.admin</sys_name>
+        <sys_package display_value="Employee Workflow Hub" source="x_1850353_employ_0">8695db33c368431028b37cec050131ae</sys_package>
+        <sys_policy/>
+        <sys_scope display_value="Employee Workflow Hub">8695db33c368431028b37cec050131ae</sys_scope>
+        <sys_security_acl display_value="x_1850353_employ_0_employee">92965fb3c368431028b37cec05013164</sys_security_acl>
+        <sys_update_name>sys_security_acl_role_56965fb3c368431028b37cec05013182</sys_update_name>
+        <sys_updated_by>admin</sys_updated_by>
+        <sys_updated_on>2026-05-06 16:58:30</sys_updated_on>
+        <sys_user_role display_value="x_1850353_employ_0.admin" name="x_1850353_employ_0.admin">5a95db33c368431028b37cec050131cd</sys_user_role>
+    </sys_security_acl_role>
+    <sys_update_version action="INSERT_OR_UPDATE">
+        <action>DELETE</action>
+        <application display_value="Employee Workflow Hub">8695db33c368431028b37cec050131ae</application>
+        <file_path/>
+        <instance_id>5ceb7a1b2b1fdad42fdcfcd2ce91bf2e</instance_id>
+        <instance_name>dev293414</instance_name>
+        <name>sys_security_acl_role_56965fb3c368431028b37cec05013182</name>
+        <payload><![CDATA[<?xml version="1.0" encoding="UTF-8"?><record_update table="sys_security_acl_role"><sys_security_acl_role action="INSERT_OR_UPDATE"><sys_class_name>sys_security_acl_role</sys_class_name><sys_created_by>admin</sys_created_by><sys_created_on>2026-05-06 16:58:30</sys_created_on><sys_id>56965fb3c368431028b37cec05013182</sys_id><sys_mod_count>0</sys_mod_count><sys_name>x_1850353_employ_0_employee.x_1850353_employ_0.admin</sys_name><sys_package display_value="Employee Workflow Hub" source="x_1850353_employ_0">8695db33c368431028b37cec050131ae</sys_package><sys_policy/><sys_scope display_value="Employee Workflow Hub">8695db33c368431028b37cec050131ae</sys_scope><sys_security_acl display_value="x_1850353_employ_0_employee">92965fb3c368431028b37cec05013164</sys_security_acl><sys_update_name>sys_security_acl_role_56965fb3c368431028b37cec05013182</sys_update_name><sys_updated_by>admin</sys_updated_by><sys_updated_on>2026-05-06 16:58:30</sys_updated_on><sys_user_role display_value="x_1850353_employ_0.admin" name="x_1850353_employ_0.admin">5a95db33c368431028b37cec050131cd</sys_user_role></sys_security_acl_role></record_update>]]></payload>
+        <payload_hash>-1774572080</payload_hash>
+        <record_name>x_1850353_employ_0_employee.x_1850353_employ_0.admin</record_name>
+        <reverted_from/>
+        <source>4695db33c368431028b37cec050131b7</source>
+        <source_table>sys_update_set</source_table>
+        <state>previous</state>
+        <sys_created_by>admin</sys_created_by>
+        <sys_created_on>2026-05-06 16:58:30</sys_created_on>
+        <sys_id>9a965fb3c368431028b37cec05013187</sys_id>
+        <sys_mod_count>0</sys_mod_count>
+        <sys_recorded_at>19dfe3a0b770000001</sys_recorded_at>
+        <sys_updated_by>admin</sys_updated_by>
+        <sys_updated_on>2026-05-06 16:58:30</sys_updated_on>
+        <type>Access Roles</type>
+        <update_guid>5a965fb38f68431030c897a642472086</update_guid>
+        <update_guid_history>5a965fb38f68431030c897a642472086:-1774572080</update_guid_history>
+    </sys_update_version>
+    <sys_metadata_delete action="INSERT_OR_UPDATE">
+        <sys_audit_delete display_value="x_1850353_employ_0_employee.x_1850353_employ_0.admin">158482ccc37c831028b37cec0501315c</sys_audit_delete>
+        <sys_class_name>sys_metadata_delete</sys_class_name>
+        <sys_created_by>admin</sys_created_by>
+        <sys_created_on>2026-05-07 05:38:22</sys_created_on>
+        <sys_db_object display_value="" name="sys_security_acl_role">sys_security_acl_role</sys_db_object>
+        <sys_id>4f827a2903544b80a862c47f044fb240</sys_id>
+        <sys_metadata>56965fb3c368431028b37cec05013182</sys_metadata>
+        <sys_mod_count>0</sys_mod_count>
+        <sys_name>x_1850353_employ_0_employee.x_1850353_employ_0.admin</sys_name>
+        <sys_package display_value="Employee Workflow Hub" source="x_1850353_employ_0">8695db33c368431028b37cec050131ae</sys_package>
+        <sys_parent display_value="">92965fb3c368431028b37cec05013164</sys_parent>
+        <sys_policy/>
+        <sys_scope display_value="Employee Workflow Hub">8695db33c368431028b37cec050131ae</sys_scope>
+        <sys_scope_delete display_value="">11f9afa88b084ece83975e635f0ef5e9</sys_scope_delete>
+        <sys_update_name>sys_security_acl_role_56965fb3c368431028b37cec05013182</sys_update_name>
+        <sys_update_version display_value="sys_security_acl_role_56965fb3c368431028b37cec05013182">9a965fb3c368431028b37cec05013187</sys_update_version>
+        <sys_updated_by>admin</sys_updated_by>
+        <sys_updated_on>2026-05-07 05:38:22</sys_updated_on>
+    </sys_metadata_delete>
+</record_update>

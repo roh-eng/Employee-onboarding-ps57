@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?><database>
+    <element db_object_id="483d43d8c374471028b37cec050131d1" extends="task" label="Project Sprint Task" max_length="40" name="x_1850353_employ_0_project_sprint_task" type="collection">
+        <element attributes="edge_encryption_enabled=true" label="Task Name" max_length="40" name="u_string_1" type="string"/>
+        <element choice="1" label="SLA Status" max_length="40" name="sla_status" type="choice">
+            <choice>
+                <element inactive_on_update="false" label="In Progress" sequence="1" value="in_progress"/>
+                <element inactive_on_update="false" label="Breached" sequence="3" value="breached"/>
+                <element inactive_on_update="false" label="Pending" sequence="0" value="pending"/>
+                <element inactive_on_update="false" label="Met" sequence="2" value="met"/>
+            </choice>
+        </element>
+        <element label="Project" max_length="32" name="project" reference="x_1850353_employ_0_project" type="reference"/>
+        <element choice="1" label="Delay Risk" max_length="40" name="delay_risk" type="choice">
+            <choice>
+                <element inactive_on_update="false" label="High" sequence="2" value="high"/>
+                <element inactive_on_update="false" label="Medium" sequence="1" value="medium"/>
+                <element inactive_on_update="false" label="Low" sequence="0" value="low"/>
+            </choice>
+        </element>
+        <element label="Progress %" max_length="40" name="progress" type="integer"/>
+        <element choice="1" label="Assigned Team" max_length="40" name="assigned_team" type="choice">
+            <choice>
+                <element inactive_on_update="false" label="UI/UX" sequence="3" value="ui_ux"/>
+                <element inactive_on_update="false" label="Development" sequence="0" value="development"/>
+                <element inactive_on_update="false" label="DevOps" sequence="2" value="devops"/>
+                <element inactive_on_update="false" label="Testing" sequence="1" value="testing"/>
+            </choice>
+        </element>
+    </element>
+</database>

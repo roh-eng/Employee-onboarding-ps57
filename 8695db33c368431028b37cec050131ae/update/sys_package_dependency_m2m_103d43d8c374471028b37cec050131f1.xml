@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?><record_update table="sys_package_dependency_m2m">
+    <sys_package_dependency_m2m action="INSERT_OR_UPDATE">
+        <dependency display_value="Task table schema" source="com.glide.task">49fb2e42187232108bb255f46a373aaf</dependency>
+        <min_version>1.0.0</min_version>
+        <sys_created_by>admin</sys_created_by>
+        <sys_created_on>2026-05-08 05:34:21</sys_created_on>
+        <sys_id>103d43d8c374471028b37cec050131f1</sys_id>
+        <sys_mod_count>0</sys_mod_count>
+        <sys_package display_value="Employee Workflow Hub" source="x_1850353_employ_0">8695db33c368431028b37cec050131ae</sys_package>
+        <sys_updated_by>admin</sys_updated_by>
+        <sys_updated_on>2026-05-08 05:34:21</sys_updated_on>
+    </sys_package_dependency_m2m>
+</record_update>

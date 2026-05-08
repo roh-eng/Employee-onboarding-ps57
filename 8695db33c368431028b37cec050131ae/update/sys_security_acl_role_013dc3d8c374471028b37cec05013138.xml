@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?><record_update table="sys_security_acl_role">
+    <sys_security_acl_role action="INSERT_OR_UPDATE">
+        <sys_class_name>sys_security_acl_role</sys_class_name>
+        <sys_created_by>admin</sys_created_by>
+        <sys_created_on>2026-05-08 05:34:25</sys_created_on>
+        <sys_id>013dc3d8c374471028b37cec05013138</sys_id>
+        <sys_mod_count>0</sys_mod_count>
+        <sys_name>x_1850353_employ_0_project_sprint_task.x_1850353_employ_0.user</sys_name>
+        <sys_package display_value="Employee Workflow Hub" source="x_1850353_employ_0">8695db33c368431028b37cec050131ae</sys_package>
+        <sys_policy/>
+        <sys_scope display_value="Employee Workflow Hub">8695db33c368431028b37cec050131ae</sys_scope>
+        <sys_security_acl display_value="x_1850353_employ_0_project_sprint_task">c53d83d8c374471028b37cec05013190</sys_security_acl>
+        <sys_update_name>sys_security_acl_role_013dc3d8c374471028b37cec05013138</sys_update_name>
+        <sys_updated_by>admin</sys_updated_by>
+        <sys_updated_on>2026-05-08 05:34:25</sys_updated_on>
+        <sys_user_role display_value="x_1850353_employ_0.user" name="x_1850353_employ_0.user">9a95db33c368431028b37cec050131db</sys_user_role>
+    </sys_security_acl_role>
+</record_update>
