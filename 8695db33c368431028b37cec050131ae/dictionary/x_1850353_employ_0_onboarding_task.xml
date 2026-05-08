@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?><database>
+    <element db_object_id="a25ace88c3bc831028b37cec050131b8" label="Onboarding Task" max_length="40" name="x_1850353_employ_0_onboarding_task" type="collection">
+        <element label="assigned_to" max_length="40" name="assigned_to" type="string"/>
+        <element choice="1" label="priority" max_length="40" name="priority" type="choice">
+            <choice>
+                <element inactive_on_update="false" label="Medium" sequence="1" value="medium"/>
+                <element inactive_on_update="false" label="High" sequence="0" value="high"/>
+                <element inactive_on_update="false" label="Low" sequence="2" value="low"/>
+            </choice>
+        </element>
+        <element choice="1" default="pending" label="status" max_length="40" name="status" type="choice">
+            <choice>
+                <element inactive_on_update="false" label="Completed" sequence="2" value="completed"/>
+                <element inactive_on_update="false" label="Pending" sequence="0" value="pending"/>
+                <element inactive_on_update="false" label="In Progress" sequence="1" value="in_progress"/>
+            </choice>
+        </element>
+        <element choice="1" label="task_type" max_length="40" name="task_type" type="choice">
+            <choice>
+                <element inactive_on_update="false" label="Desk Setup" sequence="3" value="desk_setup"/>
+                <element inactive_on_update="false" label="VPN" sequence="1" value="vpn"/>
+                <element inactive_on_update="false" label="Laptop" sequence="0" value="laptop"/>
+                <element inactive_on_update="false" label="ID Card" sequence="2" value="id_card"/>
+            </choice>
+        </element>
+        <element label="employee" max_length="32" name="employee" reference="x_1850353_employ_0_employee" type="reference"/>
+        <element label="due_date" max_length="40" name="due_date" type="glide_date"/>
+        <index name="index">
+            <element name="employee"/>
+        </index>
+    </element>
+</database>
