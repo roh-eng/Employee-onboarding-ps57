@@ -4,111 +4,97 @@
             <element>client_name</element>
             <position>0</position>
             <sys_created_by>admin</sys_created_by>
-            <sys_created_on>2026-05-09 11:10:37</sys_created_on>
-            <sys_id>f3b3ed7cc3b40b1028b37cec050131ec</sys_id>
+            <sys_created_on>2026-05-09 16:39:56</sys_created_on>
+            <sys_id>f31fa6fcc3fc0b1028b37cec050131c5</sys_id>
             <sys_mod_count>0</sys_mod_count>
             <sys_ui_formatter/>
             <sys_ui_section caption="NULL" display_value="" name="x_1850353_employ_0_project" sys_domain="global" view="Default view">043187d0c334471028b37cec050131b2</sys_ui_section>
             <sys_updated_by>admin</sys_updated_by>
-            <sys_updated_on>2026-05-09 11:10:37</sys_updated_on>
-            <sys_user/>
-            <type/>
-        </sys_ui_element>
-        <sys_ui_element action="INSERT_OR_UPDATE">
-            <element>email</element>
-            <position>1</position>
-            <sys_created_by>admin</sys_created_by>
-            <sys_created_on>2026-05-09 11:10:37</sys_created_on>
-            <sys_id>bbb3ed7cc3b40b1028b37cec050131ed</sys_id>
-            <sys_mod_count>0</sys_mod_count>
-            <sys_ui_formatter/>
-            <sys_ui_section caption="NULL" display_value="" name="x_1850353_employ_0_project" sys_domain="global" view="Default view">043187d0c334471028b37cec050131b2</sys_ui_section>
-            <sys_updated_by>admin</sys_updated_by>
-            <sys_updated_on>2026-05-09 11:10:37</sys_updated_on>
+            <sys_updated_on>2026-05-09 16:39:56</sys_updated_on>
             <sys_user/>
             <type/>
         </sys_ui_element>
         <sys_ui_element action="INSERT_OR_UPDATE">
             <element>project_manager</element>
-            <position>2</position>
+            <position>1</position>
             <sys_created_by>admin</sys_created_by>
-            <sys_created_on>2026-05-09 11:10:37</sys_created_on>
-            <sys_id>3bb3ed7cc3b40b1028b37cec050131ee</sys_id>
+            <sys_created_on>2026-05-09 16:39:56</sys_created_on>
+            <sys_id>bb1fa6fcc3fc0b1028b37cec050131c6</sys_id>
             <sys_mod_count>0</sys_mod_count>
             <sys_ui_formatter/>
             <sys_ui_section caption="NULL" display_value="" name="x_1850353_employ_0_project" sys_domain="global" view="Default view">043187d0c334471028b37cec050131b2</sys_ui_section>
             <sys_updated_by>admin</sys_updated_by>
-            <sys_updated_on>2026-05-09 11:10:37</sys_updated_on>
+            <sys_updated_on>2026-05-09 16:39:56</sys_updated_on>
             <sys_user/>
             <type/>
         </sys_ui_element>
         <sys_ui_element action="INSERT_OR_UPDATE">
             <element>deadline</element>
-            <position>3</position>
+            <position>2</position>
             <sys_created_by>admin</sys_created_by>
-            <sys_created_on>2026-05-09 11:10:37</sys_created_on>
-            <sys_id>b7b3ed7cc3b40b1028b37cec050131ef</sys_id>
+            <sys_created_on>2026-05-09 16:39:56</sys_created_on>
+            <sys_id>3b1fa6fcc3fc0b1028b37cec050131c7</sys_id>
             <sys_mod_count>0</sys_mod_count>
             <sys_ui_formatter/>
             <sys_ui_section caption="NULL" display_value="" name="x_1850353_employ_0_project" sys_domain="global" view="Default view">043187d0c334471028b37cec050131b2</sys_ui_section>
             <sys_updated_by>admin</sys_updated_by>
-            <sys_updated_on>2026-05-09 11:10:37</sys_updated_on>
+            <sys_updated_on>2026-05-09 16:39:56</sys_updated_on>
             <sys_user/>
             <type/>
         </sys_ui_element>
         <sys_ui_element action="INSERT_OR_UPDATE">
             <element>.split</element>
-            <position>4</position>
+            <position>3</position>
             <sys_created_by>admin</sys_created_by>
-            <sys_created_on>2026-05-09 11:10:37</sys_created_on>
-            <sys_id>37b3ed7cc3b40b1028b37cec050131f0</sys_id>
+            <sys_created_on>2026-05-09 16:39:56</sys_created_on>
+            <sys_id>b71fa6fcc3fc0b1028b37cec050131c8</sys_id>
             <sys_mod_count>0</sys_mod_count>
             <sys_ui_formatter/>
             <sys_ui_section caption="NULL" display_value="" name="x_1850353_employ_0_project" sys_domain="global" view="Default view">043187d0c334471028b37cec050131b2</sys_ui_section>
             <sys_updated_by>admin</sys_updated_by>
-            <sys_updated_on>2026-05-09 11:10:37</sys_updated_on>
+            <sys_updated_on>2026-05-09 16:39:56</sys_updated_on>
             <sys_user/>
             <type>.split</type>
         </sys_ui_element>
         <sys_ui_element action="INSERT_OR_UPDATE">
             <element>project_name</element>
-            <position>5</position>
+            <position>4</position>
             <sys_created_by>admin</sys_created_by>
-            <sys_created_on>2026-05-09 11:10:37</sys_created_on>
-            <sys_id>b3b3ed7cc3b40b1028b37cec050131f1</sys_id>
+            <sys_created_on>2026-05-09 16:39:56</sys_created_on>
+            <sys_id>371fa6fcc3fc0b1028b37cec050131c9</sys_id>
             <sys_mod_count>0</sys_mod_count>
             <sys_ui_formatter/>
             <sys_ui_section caption="NULL" display_value="" name="x_1850353_employ_0_project" sys_domain="global" view="Default view">043187d0c334471028b37cec050131b2</sys_ui_section>
             <sys_updated_by>admin</sys_updated_by>
-            <sys_updated_on>2026-05-09 11:10:37</sys_updated_on>
+            <sys_updated_on>2026-05-09 16:39:56</sys_updated_on>
             <sys_user/>
             <type/>
         </sys_ui_element>
         <sys_ui_element action="INSERT_OR_UPDATE">
             <element>start_date</element>
-            <position>6</position>
+            <position>5</position>
             <sys_created_by>admin</sys_created_by>
-            <sys_created_on>2026-05-09 11:10:37</sys_created_on>
-            <sys_id>33b3ed7cc3b40b1028b37cec050131f2</sys_id>
+            <sys_created_on>2026-05-09 16:39:56</sys_created_on>
+            <sys_id>b31fa6fcc3fc0b1028b37cec050131ca</sys_id>
             <sys_mod_count>0</sys_mod_count>
             <sys_ui_formatter/>
             <sys_ui_section caption="NULL" display_value="" name="x_1850353_employ_0_project" sys_domain="global" view="Default view">043187d0c334471028b37cec050131b2</sys_ui_section>
             <sys_updated_by>admin</sys_updated_by>
-            <sys_updated_on>2026-05-09 11:10:37</sys_updated_on>
+            <sys_updated_on>2026-05-09 16:39:56</sys_updated_on>
             <sys_user/>
             <type/>
         </sys_ui_element>
         <sys_ui_element action="INSERT_OR_UPDATE">
             <element>status</element>
-            <position>7</position>
+            <position>6</position>
             <sys_created_by>admin</sys_created_by>
-            <sys_created_on>2026-05-09 11:10:37</sys_created_on>
-            <sys_id>bfb3ed7cc3b40b1028b37cec050131f2</sys_id>
+            <sys_created_on>2026-05-09 16:39:56</sys_created_on>
+            <sys_id>331fa6fcc3fc0b1028b37cec050131cb</sys_id>
             <sys_mod_count>0</sys_mod_count>
             <sys_ui_formatter/>
             <sys_ui_section caption="NULL" display_value="" name="x_1850353_employ_0_project" sys_domain="global" view="Default view">043187d0c334471028b37cec050131b2</sys_ui_section>
             <sys_updated_by>admin</sys_updated_by>
-            <sys_updated_on>2026-05-09 11:10:37</sys_updated_on>
+            <sys_updated_on>2026-05-09 16:39:56</sys_updated_on>
             <sys_user/>
             <type/>
         </sys_ui_element>
