@@ -11,8 +11,8 @@ timeout /t 5 /nobreak >nul
 echo.
 echo Starting server - DO NOT CLOSE THIS WINDOW...
 echo.
-cd /d "C:\Users\meees\OneDrive\Desktop\ServiceNow\EnterpriseWorkflowHub"
-node server.js
+cd /d "%~dp0"
+node backend/server.js
 echo.
 echo ==========================================
 echo  Server has stopped. See error above.
