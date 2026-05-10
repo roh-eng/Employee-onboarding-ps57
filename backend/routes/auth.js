@@ -22,19 +22,39 @@ router.post('/login', authLimiter, loginRules, handleValidationErrors, async (re
 
         if (response.data.result && response.data.result.length > 0) {
             const user = response.data.result[0];
+
+            // ── Server-side role lookup from ServiceNow ─────────────────────────
+            let resolvedRole = 'employee';
+            try {
+                const roleRes = await tempClient.get(`/sys_user_has_role?sysparm_query=user=${user.sys_id}&sysparm_fields=role.name,role&sysparm_display_value=true`);
+                const roles = (roleRes.data.result || []).map(r => (r.role && r.role.display_value) || r.role || '').map(r => r.toLowerCase());
+                logger.info(`ServiceNow roles for ${username}: ${roles.join(', ')}`);
+
+                // Map ServiceNow roles to app roles (highest privilege wins)
+                if (roles.some(r => r.includes('admin') || r.includes('hr_manager') || r.includes('x_1850353_employ_0.admin'))) {
+                    resolvedRole = 'hr';
+                } else if (roles.some(r => r.includes('manager') || r.includes('project_manager') || r.includes('itil') || r.includes('x_1850353_employ_0.manager'))) {
+                    resolvedRole = 'manager';
+                } else if (roles.some(r => r.includes('user') || r.includes('employee') || r.includes('x_1850353_employ_0.user'))) {
+                    resolvedRole = 'employee';
+                }
+            } catch (roleErr) {
+                logger.warn(`Role lookup failed for ${username}, defaulting to employee`, { error: roleErr.message });
+            }
+
             const token = jwt.sign(
-                { userId: user.sys_id, userName: user.name || username, role: req.body.role || 'employee' },
+                { userId: user.sys_id, userName: user.name || username, role: resolvedRole },
                 config.jwtSecret,
                 { expiresIn: config.jwtExpiresIn }
             );
 
-            logger.info(`User authenticated: ${username}`);
+            logger.info(`User authenticated: ${username} with role ${resolvedRole}`);
             res.json({
                 success: true,
                 token,
                 userName: user.name || username,
                 userId: user.sys_id,
-                role: req.body.role || 'employee'
+                role: resolvedRole
             });
         } else {
             res.status(401).json({ success: false, error: 'Invalid credentials.' });

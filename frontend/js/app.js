@@ -26,8 +26,7 @@ const chatSend = document.getElementById('chat-send');
 const chatMessages = document.getElementById('chat-messages');
 const themeToggle = document.getElementById('theme-toggle');
 
-let userRole = localStorage.getItem('userRole') || 'employee';
-let userName = localStorage.getItem('userName') || 'Employee User';
+// userRole and userName are already declared in index.html inline script
 
 /* ── Toast Notifications ─────────────────────────────────────────────────── */
 function showToast(message, type = 'success') {
@@ -117,7 +116,7 @@ async function renderOverview() {
     let stats = { totalEmployees: 0, onboardedEmployees: 0, pendingTasks: 0 };
     let perf  = { priority: { High: 0, Medium: 0, Low: 0 }, sla: { Met: 0, Breached: 0, InProgress: 0 }, totalTasks: 0 };
     try { const r = await apiFetch(`${API_BASE}/stats`);          if (r.ok) { const d = await r.json(); if (!d.error) stats = d; } } catch(e){}
-    try { const r = await apiFetch(`${API_BASE}/employee-stats`); if (r.ok) { const d = await r.json(); if (!d.error) perf  = d; } } catch(e){}
+    try { const r = await apiFetch(`${API_BASE}/stats/employee`); if (r.ok) { const d = await r.json(); if (!d.error) perf  = d; } } catch(e){}
 
     const pendingEmp = Math.max(0, stats.totalEmployees - stats.onboardedEmployees);
     const isDark = document.body.classList.contains('dark-theme');
@@ -152,9 +151,9 @@ async function renderOverview() {
         <div class="card fade-in"><h3 style="margin-bottom:12px;">System Status</h3><p style="color:var(--text-muted);">Enterprise Workflow Hub is live and connected to ServiceNow PDI. AI Business Rules are monitoring bottleneck risks in real-time.</p></div>
     `;
 
-    new Chart(document.getElementById('empChart'), { type:'doughnut', data:{ labels:['Onboarded','Pending'], datasets:[{ data:[stats.onboardedEmployees,pendingEmp], backgroundColor:['#10b981','#f59e0b'], borderWidth:0 }] }, options:{ plugins:{ legend:{ labels:{ color:tc } } }, cutout:'65%' } });
-    new Chart(document.getElementById('slaChart'), { type:'doughnut', data:{ labels:['Met','Breached','In Progress'], datasets:[{ data:[perf.sla.Met,perf.sla.Breached,perf.sla.InProgress], backgroundColor:['#10b981','#ef4444','#4f46e5'], borderWidth:0 }] }, options:{ plugins:{ legend:{ labels:{ color:tc } } }, cutout:'65%' } });
-    new Chart(document.getElementById('priorityChart'), { type:'bar', data:{ labels:['High','Medium','Low'], datasets:[{ label:'Tasks', data:[perf.priority.High,perf.priority.Medium,perf.priority.Low], backgroundColor:['rgba(239,68,68,0.8)','rgba(245,158,11,0.8)','rgba(16,185,129,0.8)'], borderRadius:8, borderSkipped:false }] }, options:{ plugins:{ legend:{ display:false } }, scales:{ x:{ ticks:{ color:tc }, grid:{ display:false } }, y:{ ticks:{ color:tc, stepSize:1 }, grid:{ color:gc } } } } });
+    try { new Chart(document.getElementById('empChart'), { type:'doughnut', data:{ labels:['Onboarded','Pending'], datasets:[{ data:[stats.onboardedEmployees,pendingEmp], backgroundColor:['#10b981','#f59e0b'], borderWidth:0 }] }, options:{ plugins:{ legend:{ labels:{ color:tc } } }, cutout:'65%' } }); } catch(e) { console.error('Chart error (emp):', e); }
+    try { new Chart(document.getElementById('slaChart'), { type:'doughnut', data:{ labels:['Met','Breached','In Progress'], datasets:[{ data:[perf.sla.Met,perf.sla.Breached,perf.sla.InProgress], backgroundColor:['#10b981','#ef4444','#4f46e5'], borderWidth:0 }] }, options:{ plugins:{ legend:{ labels:{ color:tc } } }, cutout:'65%' } }); } catch(e) { console.error('Chart error (sla):', e); }
+    try { new Chart(document.getElementById('priorityChart'), { type:'bar', data:{ labels:['High','Medium','Low'], datasets:[{ label:'Tasks', data:[perf.priority.High,perf.priority.Medium,perf.priority.Low], backgroundColor:['rgba(239,68,68,0.8)','rgba(245,158,11,0.8)','rgba(16,185,129,0.8)'], borderRadius:8, borderSkipped:false }] }, options:{ plugins:{ legend:{ display:false } }, scales:{ x:{ ticks:{ color:tc }, grid:{ display:false } }, y:{ ticks:{ color:tc, stepSize:1 }, grid:{ color:gc } } } } }); } catch(e) { console.error('Chart error (priority):', e); }
 }
 
 // ── HR DASHBOARD ────────────────────────────────────────────────────────────
@@ -275,6 +274,7 @@ function showAddProjectForm() {
                 <div class="form-group"><label>Project Name</label><input type="text" id="proj-name" class="form-control" required></div>
                 <div class="form-group"><label>Client Name</label><input type="text" id="proj-client" class="form-control" required></div>
                 <div class="form-group"><label>Project Manager</label><input type="text" id="proj-manager" class="form-control" required></div>
+                <div class="form-group"><label>Start Date</label><input type="date" id="proj-start" class="form-control" required></div>
                 <div class="form-group"><label>Deadline</label><input type="date" id="proj-deadline" class="form-control" required></div>
                 <div style="grid-column:span 2;display:flex;justify-content:flex-end;gap:12px;">
                     <button type="button" class="btn btn-outline" onclick="document.getElementById('project-form-container').innerHTML=''">Cancel</button>
@@ -286,7 +286,7 @@ function showAddProjectForm() {
         e.preventDefault();
         const btn = e.target.querySelector('.btn-primary'); btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Creating...'; btn.disabled = true;
         try {
-            await apiFetch(`${API_BASE}/projects`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ project_name: document.getElementById('proj-name').value, client_name: document.getElementById('proj-client').value, project_manager: document.getElementById('proj-manager').value, deadline: document.getElementById('proj-deadline').value }) });
+            await apiFetch(`${API_BASE}/projects`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ project_name: document.getElementById('proj-name').value, client_name: document.getElementById('proj-client').value, project_manager: document.getElementById('proj-manager').value, start_date: document.getElementById('proj-start').value, deadline: document.getElementById('proj-deadline').value }) });
             showToast('Project created successfully!', 'success');
             loadView('projects');
         } catch(err) {
