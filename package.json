@@ -1,0 +1,26 @@
+{
+  "name": "enterpriseworkflowhub",
+  "version": "2.0.0",
+  "description": "Enterprise Workflow & Delivery Intelligence Hub — Node.js + ServiceNow PDI Integration",
+  "main": "backend/server.js",
+  "scripts": {
+    "start": "node backend/server.js",
+    "dev": "node backend/server.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": ["enterprise", "workflow", "servicenow", "onboarding", "sla", "ai"],
+  "author": "Enterprise Workflow Team",
+  "license": "ISC",
+  "dependencies": {
+    "axios": "^1.16.0",
+    "bcryptjs": "^3.0.3",
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "express-rate-limit": "^8.5.1",
+    "express-validator": "^7.3.2",
+    "helmet": "^8.1.0",
+    "jsonwebtoken": "^9.0.3",
+    "winston": "^3.19.0"
+  }
+}

@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Enterprise Workflow Hub</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="css/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar Navigation -->
+        <nav class="sidebar">
+            <div class="sidebar-header">
+                <i class="fa-solid fa-layer-group"></i>
+                <span>Workflow Hub</span>
+            </div>
+            <ul class="nav-menu" id="nav-menu">
+                <li class="active" data-view="overview" data-roles="hr,manager,employee">
+                    <i class="fa-solid fa-chart-line"></i> Company Overview
+                </li>
+                <!-- HR only -->
+                <li data-view="employees" data-roles="hr">
+                    <i class="fa-solid fa-users"></i> HR Dashboard
+                </li>
+                <!-- HR and Manager -->
+                <li data-view="tasks" data-roles="hr,manager">
+                    <i class="fa-solid fa-list-check"></i> Employee Tasks
+                </li>
+                <!-- All roles -->
+                <li data-view="issue" data-roles="hr,manager,employee">
+                    <i class="fa-solid fa-ticket"></i> Report Issue
+                </li>
+                <li data-view="menu" data-roles="hr,manager,employee">
+                    <i class="fa-solid fa-utensils"></i> Daily Menu
+                </li>
+
+                <!-- Stage 2 -->
+                <li data-view="projects" data-roles="hr,manager"
+                    style="margin-top:16px;border-top:1px solid rgba(255,255,255,0.05);border-radius:0;padding-top:24px;">
+                    <i class="fa-solid fa-diagram-project"></i> Project Delivery
+                </li>
+                <li data-view="slas" data-roles="hr,manager">
+                    <i class="fa-solid fa-stopwatch"></i> SLA Intelligence
+                </li>
+                <li data-view="performance" data-roles="hr,manager,employee">
+                    <i class="fa-solid fa-chart-pie"></i> My Performance
+                </li>
+
+                <li id="theme-toggle" style="margin-top:auto;">
+                    <i class="fa-solid fa-moon"></i> <span>Dark Mode</span>
+                </li>
+            </ul>
+            <div style="padding:24px;">
+                <button id="logout-btn" class="btn btn-outline"
+                    style="width:100%;justify-content:center;color:#9ca3af;border-color:rgba(255,255,255,0.1);"
+                    onclick="logout()">
+                    <i class="fa-solid fa-right-from-bracket"></i> Logout
+                </button>
+            </div>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="main-content" id="main-content">
+            <header class="global-header">
+                <div class="header-left"></div>
+                <div class="header-right">
+                    <div class="connection-status">
+                        <span class="status-dot"></span> Connected to ServiceNow PDI
+                    </div>
+                    <div class="notification-bell">
+                        <i class="fa-regular fa-bell"></i>
+                        <span class="badge">3</span>
+                    </div>
+                    <div class="user-profile">
+                        <img id="user-avatar"
+                            src="https://ui-avatars.com/api/?name=HR+Manager&background=4f46e5&color=fff"
+                            alt="User" class="avatar">
+                        <div class="user-info">
+                            <span class="user-name" id="user-name-display">HR Manager</span>
+                            <span class="user-role" id="user-role-display">HR Operations</span>
+                        </div>
+                    </div>
+                </div>
+            </header>
+            <div id="view-container"></div>
+        </main>
+    </div>
+
+    <!-- AI Assistant -->
+    <div class="chatbot-widget">
+        <button class="chat-toggle" id="chat-toggle"><i class="fa-solid fa-robot"></i></button>
+        <div class="chat-window hidden" id="chat-window">
+            <div class="chat-header">
+                <div style="font-weight:600;"><i class="fa-solid fa-robot" style="margin-right:8px;"></i> AI Assistant</div>
+                <button class="btn" id="chat-close" style="padding:4px;background:transparent;color:white;">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <div class="chat-messages" id="chat-messages">
+                <div class="message ai-message">
+                    Hi! I am your AI Delivery Assistant. Ask me about bottleneck predictions, SLA status, or onboarding delays.
+                </div>
+            </div>
+            <div class="chat-input-area">
+                <input type="text" id="chat-input" class="form-control" placeholder="Ask a question...">
+                <button class="btn btn-primary" id="chat-send" style="padding:10px 16px;">
+                    <i class="fa-solid fa-paper-plane"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ── Role-Based Access Control ──
+        const userRole = localStorage.getItem('userRole') || 'employee';
+        const userName = localStorage.getItem('userName') || 'Employee User';
+
+        document.getElementById('user-name-display').textContent = userName;
+        document.getElementById('user-role-display').textContent =
+            userRole === 'hr' ? 'HR Manager' :
+            userRole === 'manager' ? 'Project Manager' : 'Employee';
+        document.getElementById('user-avatar').src =
+            `https://ui-avatars.com/api/?name=${encodeURIComponent(userName)}&background=4f46e5&color=fff`;
+
+        // Hide menu items the current role cannot access
+        document.querySelectorAll('#nav-menu li[data-roles]').forEach(item => {
+            const allowed = item.getAttribute('data-roles').split(',');
+            if (!allowed.includes(userRole)) item.style.display = 'none';
+        });
+    </script>
+    <script src="js/app.js"></script>
+</body>
+</html>
