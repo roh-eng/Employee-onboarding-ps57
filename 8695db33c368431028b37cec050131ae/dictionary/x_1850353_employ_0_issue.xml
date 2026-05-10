@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?><database>
+    <element db_object_id="f2435a0cc3fc831028b37cec05013170" label="Issue" max_length="40" name="x_1850353_employ_0_issue" type="collection">
+        <element label="description" max_length="40" name="description" type="string"/>
+        <element choice="1" label="priority" max_length="40" name="priority" type="choice">
+            <choice>
+                <element inactive_on_update="false" label="New" sequence="0" value="new"/>
+                <element inactive_on_update="false" label="Closed" sequence="2" value="closed"/>
+                <element inactive_on_update="false" label="In Progress" sequence="1" value="in_progress"/>
+            </choice>
+        </element>
+        <element label="employee" max_length="32" name="employee" reference="x_1850353_employ_0_employee" type="reference"/>
+        <index name="index">
+            <element name="employee"/>
+        </index>
+    </element>
+</database>

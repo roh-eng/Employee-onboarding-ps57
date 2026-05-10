@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?><database>
+    <element db_object_id="ab2187d0c334471028b37cec050131b5" label="Project" max_length="40" name="x_1850353_employ_0_project" type="collection">
+        <element label="Client Name" max_length="40" name="client_name" type="string"/>
+        <element label="Project Manager" max_length="40" name="project_manager" type="string"/>
+        <element label="Email" max_length="40" name="email" type="string"/>
+        <element label="Project Name" max_length="40" name="project_name" type="string"/>
+        <element label="Deadline" max_length="40" name="deadline" type="glide_date"/>
+        <element label="Start Date" max_length="40" name="start_date" type="glide_date"/>
+        <element choice="1" label="Status" max_length="40" name="status" type="choice">
+            <choice>
+                <element inactive_on_update="false" label="Completed" sequence="4" value="completed"/>
+                <element inactive_on_update="false" label="Planning" sequence="0" value="planning"/>
+                <element inactive_on_update="false" label="Deployment" sequence="3" value="deployment"/>
+                <element inactive_on_update="false" label="Testing" sequence="2" value="testing"/>
+                <element inactive_on_update="false" label="Development" sequence="1" value="development"/>
+            </choice>
+        </element>
+    </element>
+</database>

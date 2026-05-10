@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?><database>
+    <element db_object_id="92a58640c3bc831028b37cec050131af" label="Employee" max_length="40" name="x_1850353_employ_0_employee" type="collection">
+        <element label="name" max_length="40" name="name" type="string"/>
+        <element choice="1" label="status" max_length="40" name="status" type="choice">
+            <choice>
+                <element inactive_on_update="false" label="Pending" sequence="0" value="pending"/>
+                <element inactive_on_update="false" label="Onboarded" sequence="1" value="onboarded"/>
+            </choice>
+        </element>
+        <element choice="1" label="department" max_length="40" name="department" type="choice">
+            <choice>
+                <element inactive_on_update="false" label="Security" sequence="2" value="security"/>
+                <element inactive_on_update="false" label="Facility" sequence="3" value="facility"/>
+                <element inactive_on_update="false" label="HR" sequence="1" value="hr"/>
+                <element inactive_on_update="false" label="IT" sequence="0" value="it"/>
+            </choice>
+        </element>
+        <element label="joining_date" max_length="40" name="joining_date" type="glide_date"/>
+        <element label="email" max_length="40" name="email" type="string"/>
+    </element>
+</database>

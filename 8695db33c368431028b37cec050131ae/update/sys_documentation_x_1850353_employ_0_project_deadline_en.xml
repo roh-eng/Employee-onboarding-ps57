@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?><record_update>
+    <sys_documentation element="deadline" label="Deadline" language="en" table="x_1850353_employ_0_project">
+        <sys_documentation action="INSERT_OR_UPDATE">
+            <element>deadline</element>
+            <help/>
+            <hint/>
+            <label>Deadline</label>
+            <language>en</language>
+            <name>x_1850353_employ_0_project</name>
+            <plural/>
+            <sys_class_name>sys_documentation</sys_class_name>
+            <sys_created_by>admin</sys_created_by>
+            <sys_created_on>2026-05-08 04:50:50</sys_created_on>
+            <sys_mod_count>3</sys_mod_count>
+            <sys_name>Deadline</sys_name>
+            <sys_package display_value="Employee Workflow Hub" source="x_1850353_employ_0">8695db33c368431028b37cec050131ae</sys_package>
+            <sys_policy/>
+            <sys_scope display_value="Employee Workflow Hub">8695db33c368431028b37cec050131ae</sys_scope>
+            <sys_update_name>sys_documentation_x_1850353_employ_0_project_deadline_en</sys_update_name>
+            <sys_updated_by>admin</sys_updated_by>
+            <sys_updated_on>2026-05-08 04:50:51</sys_updated_on>
+            <url/>
+            <url_target/>
+        </sys_documentation>
+    </sys_documentation>
+</record_update>
