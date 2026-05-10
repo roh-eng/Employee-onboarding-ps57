@@ -9,7 +9,7 @@ const { helmet, rateLimiter } = require('./middleware/security');
 const app = express();
 
 /* ── Security Middleware ──────────────────────────────────────────────────── */
-app.use(helmet());
+app.use(helmet);
 app.use(cors());
 app.use(rateLimiter);
 app.use(express.json({ limit: '10kb' }));
@@ -28,6 +28,7 @@ app.use('/api/projects', require('./routes/projects'));
 app.use('/api/sprint-tasks', require('./routes/sprintTasks'));
 app.use('/api/menu',    require('./routes/menu'));
 app.use('/api/chat',    require('./routes/chat'));
+app.use('/api/notifications', require('./routes/notifications'));
 
 /* ── Health Check ─────────────────────────────────────────────────────────── */
 app.get('/api/health', (req, res) => {

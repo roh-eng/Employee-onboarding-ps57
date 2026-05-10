@@ -25,11 +25,7 @@ router.get('/', verifyToken, async (req, res, next) => {
         }));
         res.json(formatted);
     } catch (err) {
-        res.json([
-            { sys_id: '1', task_name: 'Database Schema', assigned_team: 'Development', progress: 100, delay_risk: 'Low', sla_status: 'Met' },
-            { sys_id: '2', task_name: 'Node.js APIs', assigned_team: 'Development', progress: 40, delay_risk: 'High', sla_status: 'Breached' },
-            { sys_id: '3', task_name: 'Frontend Dashboard', assigned_team: 'UI/UX', progress: 10, delay_risk: 'Medium', sla_status: 'In Progress' }
-        ]);
+        next(new Error('Failed to fetch sprint tasks from ServiceNow. Please check connectivity.'));
     }
 });
 

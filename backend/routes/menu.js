@@ -19,12 +19,7 @@ router.get('/', verifyToken, async (req, res, next) => {
             available: item.available?.display_value ?? item.available
         })));
     } catch (err) {
-        res.json([
-            { id: '1', itemName: 'Grilled Chicken Salad', category: 'Lunch', calories: 450, available: true },
-            { id: '2', itemName: 'Vegan Buddha Bowl', category: 'Lunch', calories: 380, available: true },
-            { id: '3', itemName: 'Caesar Wrap', category: 'Snack', calories: 320, available: false },
-            { id: '4', itemName: 'Fresh Fruit Smoothie', category: 'Beverage', calories: 210, available: true }
-        ]);
+        next(new Error('Failed to fetch daily menu from ServiceNow. Please check connectivity.'));
     }
 });
 
@@ -80,7 +75,7 @@ router.get('/analytics', verifyToken, async (req, res, next) => {
         });
         res.json(stats);
     } catch (err) {
-        res.json({ totalItems: 4, availableItems: 3, unavailableItems: 1, byCategory: { Lunch: 2, Snack: 1, Beverage: 1 } });
+        next(new Error('Failed to fetch menu analytics from ServiceNow. Please check connectivity.'));
     }
 });
 
