@@ -6,9 +6,16 @@
   "scripts": {
     "start": "node backend/server.js",
     "dev": "node backend/server.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "node tests/api.test.js"
   },
-  "keywords": ["enterprise", "workflow", "servicenow", "onboarding", "sla", "ai"],
+  "keywords": [
+    "enterprise",
+    "workflow",
+    "servicenow",
+    "onboarding",
+    "sla",
+    "ai"
+  ],
   "author": "Enterprise Workflow Team",
   "license": "ISC",
   "engines": {
@@ -25,6 +32,10 @@
     "express-validator": "^7.3.2",
     "helmet": "^8.1.0",
     "jsonwebtoken": "^9.0.3",
-    "winston": "^3.19.0"
+    "winston": "^3.19.0",
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "supertest": "^7.1.0"
   }
 }

@@ -55,9 +55,7 @@ router.get('/employee', verifyToken, async (req, res, next) => {
         }
 
         res.json(stats);
-    } catch (err) {
-        res.json({ priority: { High: 1, Medium: 1, Low: 1 }, sla: { Met: 1, Breached: 1, InProgress: 1 }, avgProgress: 55, totalTasks: 3 });
-    }
+    } catch (err) { next(err); }
 });
 
 module.exports = router;

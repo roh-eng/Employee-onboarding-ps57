@@ -24,9 +24,7 @@ router.get('/', verifyToken, async (req, res, next) => {
             sla_status: getVal(task.sla_status, 'Pending')
         }));
         res.json(formatted);
-    } catch (err) {
-        next(new Error('Failed to fetch sprint tasks from ServiceNow. Please check connectivity.'));
-    }
+    } catch (err) { next(err); }
 });
 
 router.put('/:id', verifyToken, requireRole('hr', 'manager'), async (req, res, next) => {

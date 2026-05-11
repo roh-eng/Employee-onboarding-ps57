@@ -12,9 +12,7 @@ router.get('/', verifyToken, async (req, res, next) => {
     try {
         const response = await snowClient.get(`/${TABLE}`);
         res.json(response.data.result || []);
-    } catch (err) {
-        res.json([{ sys_id: '1', project_name: 'Workflow Hub v2', client_name: 'Internal', project_manager: 'Admin', status: 'Development' }]);
-    }
+    } catch (err) { next(err); }
 });
 
 router.post('/', verifyToken, requireRole('hr', 'manager'), projectRules, handleValidationErrors, async (req, res, next) => {

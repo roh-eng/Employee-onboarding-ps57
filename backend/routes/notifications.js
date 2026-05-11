@@ -133,6 +133,45 @@ router.post('/broadcast', verifyToken, requireRole('hr', 'manager'), async (req,
     }
 });
 
+/* ── POST send email alert ──────────────────────────────────────────────── */
+router.post('/email-alert', verifyToken, requireRole('hr', 'manager'), async (req, res, next) => {
+    try {
+        const { to, subject, body, priority } = req.body;
+        if (!to || !subject || !body) {
+            return res.status(400).json({ success: false, error: 'Fields "to", "subject", and "body" are required.' });
+        }
+
+        // Store as a high-priority notification so recipients see it in-app
+        const payload = {
+            title: subject,
+            message: body,
+            type: priority === 'High' ? 'Urgent' : 'Email',
+            recipient: to
+        };
+
+        try {
+            const response = await snowClient.post(`/${TABLE}`, payload);
+            logger.info('Email alert notification created', { id: response.data.result?.sys_id, to });
+            res.status(201).json({ success: true, data: response.data.result, note: 'Notification created. Integrate SMTP for real email delivery.' });
+        } catch (snErr) {
+            // In-memory fallback when ServiceNow table missing
+            const item = {
+                sys_id: String(memoryId++),
+                title: subject,
+                message: body,
+                type: priority === 'High' ? 'Urgent' : 'Email',
+                recipient: to,
+                read: false,
+                created: new Date().toISOString(),
+                createdBy: req.user.userName
+            };
+            memoryStore.push(item);
+            logger.info('Email alert stored in-memory', { id: item.sys_id, to });
+            res.status(201).json({ success: true, data: item, note: 'Stored in-memory (ServiceNow table not configured). Integrate SMTP for real email delivery.' });
+        }
+    } catch (err) { next(err); }
+});
+
 /* ── GET unread count ───────────────────────────────────────────────────── */
 router.get('/unread-count', verifyToken, async (req, res, next) => {
     try {

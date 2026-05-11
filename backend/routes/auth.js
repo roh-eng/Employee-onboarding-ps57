@@ -61,7 +61,7 @@ router.post('/login', authLimiter, loginRules, handleValidationErrors, async (re
         }
     } catch (err) {
         logger.error(`Login failed for ${req.body.username}`, { error: err.message });
-        next(new Error('Invalid credentials or ServiceNow unreachable.'));
+        res.status(401).json({ success: false, error: 'Invalid credentials or ServiceNow unreachable.' });
     }
 });
 
