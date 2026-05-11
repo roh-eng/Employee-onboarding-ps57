@@ -43,6 +43,29 @@ jobs:
           node --check backend/routes/chat.js
           node --check backend/routes/stats.js
 
+      - name: Start server in background
+        run: node backend/server.js &
+        env:
+          NODE_ENV: test
+          PORT: 3000
+          JWT_SECRET: test-secret-key
+          SERVICENOW_INSTANCE: https://example.service-now.com
+          SERVICENOW_USERNAME: test
+          SERVICENOW_PASSWORD: test
+          SERVICENOW_SCOPE: x_test_scope
+
+      - name: Wait for server to be ready
+        run: |
+          echo "Waiting for server..."
+          for i in $(seq 1 15); do
+            if curl -sf http://localhost:3000/api/health > /dev/null; then
+              echo "Server is up!"
+              break
+            fi
+            echo "Attempt $i: server not ready, waiting 2s..."
+            sleep 2
+          done
+
       - name: Run API tests
         run: npm test
         env:
