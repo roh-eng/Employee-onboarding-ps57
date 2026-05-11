@@ -135,3 +135,4 @@ Then open [http://localhost:3000](http://localhost:3000), log in, and navigate t
 - Edit items (HR role)
 - Delete items (HR role)
 - View analytics (any role)
+ 

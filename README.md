@@ -4,7 +4,7 @@
 [![Express](https://img.shields.io/badge/Express-5.x-blue)](https://expressjs.com/)
 [![ServiceNow](https://img.shields.io/badge/ServiceNow-PDI-orange)](https://developer.servicenow.com/)
 
-A production-ready, full-stack enterprise application that bridges a modern Node.js backend with **ServiceNow PDI** (Personal Developer Instance) to deliver end-to-end employee onboarding, project delivery, SLA intelligence, and AI-powered assistance.
+A production-ready, full-stack enterprise application that bridges a modern Node.js backend with **ServiceNow PDI** (Personal Developer Instance) to deliver end-to-end employee onboarding, project delivery, SLA intelligence, real-time dashboards, and an in-app Help Assistant.
 
 ---
 
@@ -88,7 +88,7 @@ This platform solves all four problems by integrating **ServiceNow App Engine St
 | **Project Delivery** | Project list with client, manager, status | HR, Manager |
 | **SLA Intelligence** | Sprint task progress, AI delay risk prediction | HR, Manager |
 | **My Performance** | Task health score, SLA success rate, priority matrix | All |
-| **AI Chatbot** | Gemini-powered assistant with live ServiceNow context | All |
+| **Help Assistant** | In-app navigation helper with live ServiceNow context | All |
 
 ---
 
@@ -103,7 +103,12 @@ This platform solves all four problems by integrating **ServiceNow App Engine St
 | **Frontend** | HTML5, CSS3, Vanilla JavaScript |
 | **Charts** | Chart.js 4.4 |
 | **Icons** | Font Awesome 6.4 |
-| **External APIs** | ServiceNow REST Table API, Google Gemini 1.5 Flash |
+| **External APIs** | ServiceNow REST Table API |
+| **Real-Time** | WebSocket (`ws`) for live dashboard updates |
+| **Reports** | CSV / JSON export engine |
+| **i18n** | Multi-language support (EN, ES, FR) |
+| **PWA** | Service Worker, offline caching, push notifications |
+| **DevOps** | Docker, Docker Compose, GitHub Actions CI/CD |
 
 ---
 
@@ -139,9 +144,12 @@ EnterpriseWorkflowHub/
 │   ├── setup-guide/
 │   └── screenshots/
 │
-├── tests/                       # Validation suite
-│   ├── api.test.js              # Smoke tests
+├── tests/                       # Integration test suite
+│   ├── api.test.js              # 20+ automated integration tests
 │   └── EnterpriseWorkflowHub.postman_collection.json
+├── Dockerfile                   # Production container image
+├── docker-compose.yml           # Multi-service orchestration
+├── .github/workflows/ci.yml     # GitHub Actions CI/CD pipeline
 │
 ├── logs/                        # Winston log files
 ├── .env.example                 # Environment template
@@ -226,7 +234,18 @@ The application will be available at [http://localhost:3000](http://localhost:30
 | `GET`  | `/api/menu/analytics` | JWT | All | Menu statistics |
 | `GET`  | `/api/stats` | JWT | All | Dashboard KPIs |
 | `GET`  | `/api/stats/employee` | JWT | All | Performance stats |
-| `POST` | `/api/chat` | JWT | All | AI assistant message |
+| `POST` | `/api/chat` | JWT | All | Help assistant message |
+| `GET`  | `/api/reports/employees/csv` | JWT | HR, Manager | Export employee CSV |
+| `GET`  | `/api/reports/tasks/csv` | JWT | HR, Manager | Export task CSV |
+| `GET`  | `/api/reports/projects/csv` | JWT | HR, Manager | Export project CSV |
+| `GET`  | `/api/reports/sprint-tasks/csv` | JWT | HR, Manager | Export sprint CSV |
+| `GET`  | `/api/reports/dashboard/json` | JWT | All | Export dashboard JSON |
+| `POST` | `/api/webhooks/register` | JWT | HR | Register outbound webhook |
+| `GET`  | `/api/webhooks` | JWT | HR | List webhooks |
+| `DELETE` | `/api/webhooks/:id` | JWT | HR | Delete webhook |
+| `POST` | `/api/webhooks/test/:id` | JWT | HR | Test webhook delivery |
+| `POST` | `/api/webhooks/incoming/hrms` | None | — | Receive HRMS payload |
+| `POST` | `/api/broadcast` | None | — | Trigger WS broadcast |
 | `GET`  | `/api/health` | None | — | Server health check |
 
 ### Response Format
@@ -278,9 +297,9 @@ The system uses **JWT (JSON Web Tokens)** issued after validating credentials ag
 
 ### Automation
 
-- **Flow Designer**: Employee onboarding triggers automatic task creation.
-- **Business Rules**: AI Bottleneck Risk Predictor updates `delay_risk` based on progress %.
-- **SLA Definitions**: 5-day development SLA with breach escalation.
+- **Flow Designer**: Employee onboarding triggers automatic task creation. Evidence in `8695db33c368431028b37cec050131ae/update/` (Flow Designer flows, dictionary entries, ACL definitions).
+- **Business Rules**: AI Bottleneck Risk Predictor updates `delay_risk` based on progress %. Evidence in `servicenow/business_rules/`.
+- **SLA Definitions**: 5-day development SLA with breach escalation. Evidence in `8695db33c368431028b37cec050131ae/update/contract_sla_*.xml`.
 
 ### Running Table Scripts
 
@@ -293,16 +312,21 @@ node servicenow/create_acls.js    # Creates ACLs for Daily Menu
 
 ## Testing
 
-### Smoke Tests
+### Integration Tests
 
 ```bash
-node tests/api.test.js
+npm test
 ```
 
-Validates:
+Validates 20+ scenarios:
 - Health endpoint returns `200 OK`
 - Auth validation rejects empty credentials (`400`)
-- Protected routes reject unauthenticated requests (`401`)
+- Invalid ServiceNow credentials rejected (`401`)
+- All protected routes reject unauthenticated requests (`401`)
+- Menu, reports, webhooks, notifications security
+- Error format consistency
+- CORS headers present
+- Response time under 2 seconds
 
 ### Postman Collection
 
@@ -345,11 +369,16 @@ Import `tests/EnterpriseWorkflowHub.postman_collection.json` into Postman.
 
 ## Future Enhancements
 
+- [x] **Real-Time Dashboards** — WebSocket live updates (`ws` on `/ws`)
+- [x] **Reports & Exports** — CSV/JSON export engine for all modules
+- [x] **HRMS Connector** — Webhook receiver pattern for SAP/Workday
+- [x] **Multi-Language Support** — i18n framework (EN, ES, FR)
+- [x] **PWA Support** — Offline caching, service worker, push notifications
+- [x] **Docker Deployment** — Production Dockerfile + docker-compose.yml
+- [x] **CI/CD Pipeline** — GitHub Actions with syntax checks, tests, Docker build
 - [ ] **Mobile App** — React Native companion for field HR
-- [ ] **HRMS Integration** — SAP / Workday connector
 - [ ] **Advanced AI Analytics** — Predictive turnover modeling
 - [ ] **Multi-Tenant Support** — Multi-company environment scaling
-- [ ] **Push Notifications** — Real-time SLA breach alerts
 - [ ] **Dark Mode Persistence** — User preference stored in DB
 
 ---

@@ -5,6 +5,7 @@ const config = require('./config');
 const logger = require('./services/logger');
 const { errorHandler, notFound } = require('./middleware/errorHandler');
 const { helmet, rateLimiter } = require('./middleware/security');
+const { initRealtime, broadcast } = require('./services/realtime');
 
 const app = express();
 
@@ -29,6 +30,15 @@ app.use('/api/sprint-tasks', require('./routes/sprintTasks'));
 app.use('/api/menu',    require('./routes/menu'));
 app.use('/api/chat',    require('./routes/chat'));
 app.use('/api/notifications', require('./routes/notifications'));
+app.use('/api/reports', require('./routes/reports'));
+app.use('/api/webhooks', require('./routes/webhooks'));
+
+/* ── Real-time broadcast endpoint (HTTP trigger for WS push) ────────────── */
+app.post('/api/broadcast', async (req, res) => {
+    const { channel, payload } = req.body;
+    broadcast(channel, payload);
+    res.json({ success: true, message: 'Broadcast sent.' });
+});
 
 /* ── Health Check ─────────────────────────────────────────────────────────── */
 app.get('/api/health', (req, res) => {
@@ -48,11 +58,16 @@ process.on('unhandledRejection', (reason) => {
 });
 
 /* ── Start Server ─────────────────────────────────────────────────────────── */
-app.listen(config.port, () => {
+const server = app.listen(config.port, () => {
     logger.info(`Enterprise Workflow Hub Server running on http://localhost:${config.port}`);
     console.log(`Enterprise Workflow Hub Server running on http://localhost:${config.port}`);
     console.log('Press Ctrl+C to stop the server.');
-}).on('error', (err) => {
+});
+
+/* ── Initialize WebSocket Server ────────────────────────────────────────── */
+initRealtime(server);
+
+server.on('error', (err) => {
     if (err.code === 'EADDRINUSE') {
         logger.error(`Port ${config.port} is already in use.`);
         console.error(`ERROR: Port ${config.port} is already in use. Close the other server first and try again.`);

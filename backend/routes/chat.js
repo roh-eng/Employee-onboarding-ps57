@@ -1,11 +1,9 @@
 const express = require('express');
-const axios = require('axios');
 const config = require('../config');
 const snowClient = require('../services/snowClient');
 const { verifyToken } = require('../middleware/auth');
 
 const router = express.Router();
-const GEMINI_API_KEY = config.geminiKey;
 
 function generateSmartReply(msg, projectCtx) {
     // ── ENTERPRISE APP NAVIGATION ──
@@ -201,30 +199,11 @@ Answer helpfully and concisely. For project-related questions, reference the liv
             return res.json({ reply: fallbackReply });
         }
 
-        // No fallback match — try Gemini AI for unknown questions
-        if (!GEMINI_API_KEY || GEMINI_API_KEY === 'YOUR_GEMINI_API_KEY_HERE') {
-            return res.json({ reply: 'I am your **Enterprise AI Assistant**. Ask me about **HR**, **Projects**, **Tasks**, **SLA**, or general topics like **science**, **history**, **tech**, **sports**, and **business**!' });
-        }
-
-        let reply;
-        try {
-            const geminiRes = await axios.post(
-                `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`,
-                {
-                    contents: [{
-                        parts: [{ text: systemPrompt + '\n\nUser: ' + userMessage }]
-                    }]
-                },
-                { headers: { 'Content-Type': 'application/json' }, timeout: 15000 }
-            );
-            reply = geminiRes.data?.candidates?.[0]?.content?.parts?.[0]?.text || 'I could not generate a response. Please try again.';
-        } catch (geminiErr) {
-            console.log('Gemini error:', geminiErr.response?.status || geminiErr.message);
-            reply = 'I am your **Enterprise AI Assistant**. Ask me about **HR**, **Projects**, **Tasks**, **SLA**, or general topics like **science**, **history**, **tech**, **sports**, and **business**!';
-        }
+        // No fallback match — provide a contextual help response
+        const reply = 'I am your **Enterprise Help Assistant**. I can help you navigate the platform. Try asking about **HR Dashboard**, **Projects**, **Tasks**, **SLA Intelligence**, **Daily Menu**, or **Report Issue**.';
         res.json({ reply });
     } catch (err) {
-        res.json({ reply: 'I am your Enterprise AI Assistant. How can I help you today?' });
+        res.json({ reply: 'I am your Enterprise Help Assistant. How can I help you today?' });
     }
 });
 

@@ -18,9 +18,7 @@ router.get('/', verifyToken, async (req, res, next) => {
             calories: item.calories?.display_value ?? item.calories,
             available: item.available?.display_value ?? item.available
         })));
-    } catch (err) {
-        next(new Error('Failed to fetch daily menu from ServiceNow. Please check connectivity.'));
-    }
+    } catch (err) { next(err); }
 });
 
 router.post('/', verifyToken, requireRole('hr'), menuRules, handleValidationErrors, async (req, res, next) => {
@@ -74,9 +72,7 @@ router.get('/analytics', verifyToken, async (req, res, next) => {
             stats.byCategory[cat]++;
         });
         res.json(stats);
-    } catch (err) {
-        next(new Error('Failed to fetch menu analytics from ServiceNow. Please check connectivity.'));
-    }
+    } catch (err) { next(err); }
 });
 
 module.exports = router;
