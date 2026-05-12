@@ -42,6 +42,7 @@ jobs:
           node --check backend/routes/webhooks.js
           node --check backend/routes/chat.js
           node --check backend/routes/stats.js
+          node --check backend/routes/feedback.js
 
       - name: Start server in background
         run: node backend/server.js &

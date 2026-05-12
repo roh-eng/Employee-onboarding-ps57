@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?><record_update table="sp_widget">
+    <sp_widget action="INSERT_OR_UPDATE">
+        <category>Employee Workflow Hub</category>
+        <client_script><![CDATA[
+api.spinner = true;
+api.server.get().then(function(response) {
+    api.data.issues = response.data.result || [];
+    api.spinner = false;
+});
+]]></client_script>
+        <controller_as>c</controller_as>
+        <css/>
+        <data_table>x_1850353_employ_0_issue</data_table>
+        <demo_data/>
+        <description>Issue Tracking widget for ServiceNow Service Portal — allows employees to view and report issues</description>
+        <docs/>
+        <field_list>description,priority,employee,status</field_list>
+        <has_preview>true</has_preview>
+        <id>issue_tracking_portal</id>
+        <internal>false</internal>
+        <link/>
+        <name>Issue Tracking Portal</name>
+        <option_schema/>
+        <public>false</public>
+        <roles>x_1850353_employ_0.user</roles>
+        <script><![CDATA[
+(function() {
+    data.result = [];
+    try {
+        var gr = new GlideRecord('x_1850353_employ_0_issue');
+        gr.orderByDesc('sys_created_on');
+        gr.setLimit(50);
+        gr.query();
+        while (gr.next()) {
+            data.result.push({
+                sys_id: gr.getUniqueValue(),
+                description: gr.getDisplayValue('description'),
+                priority: gr.getDisplayValue('priority'),
+                employee: gr.getDisplayValue('employee'),
+                status: gr.getDisplayValue('status')
+            });
+        }
+    } catch(e) {
+        gs.error('Issue Tracking widget error: ' + e.message);
+    }
+})();
+]]></script>
+        <servicenow>true</servicenow>
+        <sys_class_name>sp_widget</sys_class_name>
+        <sys_created_by>admin</sys_created_by>
+        <sys_created_on>2026-05-12 10:00:00</sys_created_on>
+        <sys_id>b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9</sys_id>
+        <sys_mod_count>0</sys_mod_count>
+        <sys_name>Issue Tracking Portal</sys_name>
+        <sys_package display_value="Employee Workflow Hub" source="x_1850353_employ_0">8695db33c368431028b37cec050131ae</sys_package>
+        <sys_policy/>
+        <sys_scope display_value="Employee Workflow Hub">8695db33c368431028b37cec050131ae</sys_scope>
+        <sys_update_name>sp_widget_b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9</sys_update_name>
+        <sys_updated_by>admin</sys_updated_by>
+        <sys_updated_on>2026-05-12 10:00:00</sys_updated_on>
+        <template><![CDATA[
+<div class="panel panel-warning">
+  <div class="panel-heading">
+    <h3 class="panel-title">Issue Tracking</h3>
+  </div>
+  <div class="panel-body">
+    <table class="table table-striped">
+      <thead><tr><th>Description</th><th>Priority</th><th>Status</th></tr></thead>
+      <tbody>
+        <tr ng-repeat="issue in data.issues">
+          <td>{{issue.description}}</td><td>{{issue.priority}}</td><td>{{issue.status}}</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+]]></template>
+    </sp_widget>
+</record_update>

@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?><record_update table="sp_page">
+    <sp_page action="INSERT_OR_UPDATE">
+        <category>Employee Workflow Hub</category>
+        <css/>
+        <description>Employee Workflow Hub Service Portal page — central hub for onboarding, issues, feedback, and daily menu</description>
+        <draft>false</draft>
+        <dynamic_title_data/>
+        <dynamic_title_script/>
+        <id>employee_workflow_hub</id>
+        <include_title>true</include_title>
+        <layout>2-equal</layout>
+        <name>Employee Workflow Hub</name>
+        <public>false</public>
+        <roles>x_1850353_employ_0.user</roles>
+        <short_description>Central portal for Employee Onboarding, Issue Tracking, and Daily Menu</short_description>
+        <sys_class_name>sp_page</sys_class_name>
+        <sys_created_by>admin</sys_created_by>
+        <sys_created_on>2026-05-12 10:00:00</sys_created_on>
+        <sys_id>f2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7</sys_id>
+        <sys_mod_count>0</sys_mod_count>
+        <sys_name>Employee Workflow Hub</sys_name>
+        <sys_package display_value="Employee Workflow Hub" source="x_1850353_employ_0">8695db33c368431028b37cec050131ae</sys_package>
+        <sys_policy/>
+        <sys_scope display_value="Employee Workflow Hub">8695db33c368431028b37cec050131ae</sys_scope>
+        <sys_update_name>sp_page_f2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7</sys_update_name>
+        <sys_updated_by>admin</sys_updated_by>
+        <sys_updated_on>2026-05-12 10:00:00</sys_updated_on>
+        <title>Employee Workflow Hub</title>
+    </sp_page>
+</record_update>

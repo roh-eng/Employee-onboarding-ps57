@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8"?><record_update table="sp_widget">
+    <sp_widget action="INSERT_OR_UPDATE">
+        <category>Employee Workflow Hub</category>
+        <client_script><![CDATA[
+api.spinner = true;
+api.server.get().then(function(response) {
+    api.data.feedback = response.data.result || [];
+    api.spinner = false;
+});
+]]></client_script>
+        <controller_as>c</controller_as>
+        <css/>
+        <data_table>x_1850353_employ_0_employee_feedback</data_table>
+        <demo_data/>
+        <description>Employee Feedback and Survey widget for ServiceNow Service Portal — submit and track feedback</description>
+        <docs/>
+        <field_list>employee,category,rating,comments,status,submitted_on</field_list>
+        <has_preview>true</has_preview>
+        <id>employee_feedback_portal</id>
+        <internal>false</internal>
+        <link/>
+        <name>Employee Feedback Portal</name>
+        <option_schema/>
+        <public>false</public>
+        <roles>x_1850353_employ_0.user</roles>
+        <script><![CDATA[
+(function() {
+    data.result = [];
+    try {
+        var gr = new GlideRecord('x_1850353_employ_0_employee_feedback');
+        gr.orderByDesc('sys_created_on');
+        gr.setLimit(50);
+        gr.query();
+        while (gr.next()) {
+            data.result.push({
+                sys_id: gr.getUniqueValue(),
+                employee: gr.getDisplayValue('employee'),
+                category: gr.getDisplayValue('category'),
+                rating: gr.getDisplayValue('rating'),
+                comments: gr.getDisplayValue('comments'),
+                status: gr.getDisplayValue('status'),
+                submitted_on: gr.getDisplayValue('submitted_on')
+            });
+        }
+    } catch(e) {
+        gs.error('Feedback widget error: ' + e.message);
+    }
+})();
+]]></script>
+        <servicenow>true</servicenow>
+        <sys_class_name>sp_widget</sys_class_name>
+        <sys_created_by>admin</sys_created_by>
+        <sys_created_on>2026-05-12 10:00:00</sys_created_on>
+        <sys_id>c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0</sys_id>
+        <sys_mod_count>0</sys_mod_count>
+        <sys_name>Employee Feedback Portal</sys_name>
+        <sys_package display_value="Employee Workflow Hub" source="x_1850353_employ_0">8695db33c368431028b37cec050131ae</sys_package>
+        <sys_policy/>
+        <sys_scope display_value="Employee Workflow Hub">8695db33c368431028b37cec050131ae</sys_scope>
+        <sys_update_name>sp_widget_c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0</sys_update_name>
+        <sys_updated_by>admin</sys_updated_by>
+        <sys_updated_on>2026-05-12 10:00:00</sys_updated_on>
+        <template><![CDATA[
+<div class="panel panel-info">
+  <div class="panel-heading">
+    <h3 class="panel-title">Employee Feedback &amp; Surveys</h3>
+  </div>
+  <div class="panel-body">
+    <table class="table table-striped">
+      <thead><tr><th>Category</th><th>Rating</th><th>Comments</th><th>Status</th></tr></thead>
+      <tbody>
+        <tr ng-repeat="fb in data.feedback">
+          <td>{{fb.category}}</td><td>{{fb.rating}}</td><td>{{fb.comments}}</td><td>{{fb.status}}</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+]]></template>
+    </sp_widget>
+</record_update>
