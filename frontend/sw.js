@@ -6,7 +6,7 @@
 const CACHE_NAME = 'workflow-hub-v2';
 const STATIC_ASSETS = [
     '/',
-    '/login.html',
+    '/frontend/login.html',
     '/css/style.css',
     '/js/app.js',
     '/js/i18n.js',
