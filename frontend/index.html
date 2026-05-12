@@ -118,6 +118,9 @@
 
     <script>
         // ── Role-Based Access Control ──
+        // On page load, verify the stored role matches the JWT-embedded role
+        // by calling /auth/session. This prevents client-side role tampering
+        // where a user could modify localStorage to elevate privileges.
         const userRole = localStorage.getItem('userRole') || 'employee';
         const userName = localStorage.getItem('userName') || 'Employee User';
 
@@ -133,6 +136,42 @@
             const allowed = item.getAttribute('data-roles').split(',');
             if (!allowed.includes(userRole)) item.style.display = 'none';
         });
+
+        // ── Server-Side Role Verification ──
+        // Validate that the localStorage role matches the server-resolved JWT role.
+        // If a user tampered with localStorage, the JWT (signed server-side) wins.
+        (async function verifyRole() {
+            const token = localStorage.getItem('authToken');
+            if (!token) return; // auth guard will redirect
+            try {
+                const res = await fetch('/api/auth/session', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.user && data.user.role) {
+                        const jwtRole = data.user.role;
+                        const storedRole = localStorage.getItem('userRole');
+                        if (storedRole !== jwtRole) {
+                            // JWT role is the authoritative source — override any
+                            // client-side modification of the stored role.
+                            localStorage.setItem('userRole', jwtRole);
+                            // Reload to apply the corrected role-based UI
+                            window.location.reload();
+                        }
+                    }
+                } else if (res.status === 401) {
+                    // Token expired or invalid — force re-login
+                    localStorage.removeItem('authToken');
+                    localStorage.removeItem('userRole');
+                    localStorage.removeItem('userName');
+                    window.location.href = '/frontend/login.html';
+                }
+            } catch (e) {
+                // Network error — silently continue with stored role
+                console.warn('Session verification failed:', e.message);
+            }
+        })();
 
         // ── Service Worker Registration (PWA) ──
         if ('serviceWorker' in navigator) {
