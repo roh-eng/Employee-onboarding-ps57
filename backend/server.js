@@ -55,6 +55,7 @@ app.use('/api/chat',    require('./routes/chat'));
 app.use('/api/notifications', require('./routes/notifications'));
 app.use('/api/reports', require('./routes/reports'));
 app.use('/api/webhooks', require('./routes/webhooks'));
+app.use('/api/feedback', require('./routes/feedback'));
 
 /* ── Real-time broadcast endpoint (HTTP trigger for WS push) ────────────── */
 app.post('/api/broadcast', async (req, res) => {

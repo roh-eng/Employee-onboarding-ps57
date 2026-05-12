@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?><record_update table="sys_ui_list">
+    <sys_ui_list action="INSERT_OR_UPDATE">
+        <category/>
+        <columns>employee,category,rating,comments,status,submitted_on</columns>
+        <condition/>
+        <groups/>
+        <name>x_1850353_employ_0_employee_feedback</name>
+        <order/>
+        <roles>x_1850353_employ_0.user</roles>
+        <sys_class_name>sys_ui_list</sys_class_name>
+        <sys_created_by>admin</sys_created_by>
+        <sys_created_on>2026-05-12 10:00:00</sys_created_on>
+        <sys_id>lc2c33d7e8f9a0b1c2d3e4f506677889</sys_id>
+        <sys_mod_count>0</sys_mod_count>
+        <sys_name>x_1850353_employ_0_employee_feedback</sys_name>
+        <sys_package display_value="Employee Workflow Hub" source="x_1850353_employ_0">8695db33c368431028b37cec050131ae</sys_package>
+        <sys_policy/>
+        <sys_scope display_value="Employee Workflow Hub">8695db33c368431028b37cec050131ae</sys_scope>
+        <sys_update_name>sys_ui_list_lc2c33d7e8f9a0b1c2d3e4f506677889</sys_update_name>
+        <sys_updated_by>admin</sys_updated_by>
+        <sys_updated_on>2026-05-12 10:00:00</sys_updated_on>
+        <view>default</view>
+    </sys_ui_list>
+</record_update>

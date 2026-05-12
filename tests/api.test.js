@@ -15,7 +15,9 @@ const assert = require('assert');
 const jwt = require('jsonwebtoken');
 
 const BASE = process.env.TEST_BASE || 'http://localhost:3000/api';
-const JWT_SECRET = process.env.JWT_SECRET || 'enterprise-workflow-hub-jwt-secret-2026';
+// SECURITY: JWT_SECRET must come from CI environment (set in .github/workflows/ci.yml)
+// No hardcoded fallback — matches the production config security policy.
+const JWT_SECRET = process.env.JWT_SECRET;
 
 /* ── Mock JWT Generator ───────────────────────────────────────────────────── */
 // Generates a valid signed token without hitting ServiceNow — safe for CI
@@ -133,7 +135,7 @@ async function testAuthLoginInvalidCredentials() {
 }
 
 async function testProtectedRoutesWithoutToken() {
-    const routes = ['/employees', '/tasks', '/issues', '/projects', '/sprint-tasks', '/menu', '/notifications', '/reports/dashboard/json'];
+    const routes = ['/employees', '/tasks', '/issues', '/projects', '/sprint-tasks', '/menu', '/notifications', '/reports/dashboard/json', '/feedback'];
     for (const route of routes) {
         const { status, data } = await get(route);
         assert.strictEqual(status, 401, `${route} should require auth`);
@@ -878,6 +880,107 @@ async function testHealthResponseShape() {
     console.log('\u2705 Health response shape contract validated');
 }
 
+/* ── Feedback Module Tests ─────────────────────────────────────────────── */
+// Tests for the employee feedback & survey module (backend/routes/feedback.js)
+
+async function testFeedbackSecurityUnauthenticated() {
+    const { status: s1 } = await get('/feedback');
+    assert.strictEqual(s1, 401, 'GET /feedback without token -> 401');
+
+    const { status: s2 } = await post('/feedback', { category: 'Work Environment', rating: 4, comments: 'Test' });
+    assert.strictEqual(s2, 401, 'POST /feedback without token -> 401');
+
+    const { status: s3 } = await get('/feedback/analytics');
+    assert.strictEqual(s3, 401, 'GET /feedback/analytics without token -> 401');
+
+    console.log('\u2705 Feedback route security (unauthenticated) passed');
+}
+
+async function testFeedbackAuthenticatedCRUD() {
+    const employeeToken = createMockToken('employee');
+    const hrToken = createMockToken('hr');
+
+    // POST /feedback — employee can submit feedback
+    const { status: createStatus, data: createData } = await post('/feedback', {
+        category: 'Work Environment',
+        rating: 4,
+        comments: 'Great onboarding experience!'
+    }, employeeToken);
+    assert.ok(
+        createStatus === 201 || createStatus === 503 || createStatus === 500,
+        `POST /feedback should return 201/503/500, got ${createStatus}`
+    );
+    if (isServiceNowReachable(createStatus)) {
+        assert.ok(createData.sys_id, 'Created feedback should have sys_id');
+    }
+
+    // GET /feedback — employee sees only their own
+    const { status: readStatus, data: readData } = await get('/feedback', employeeToken);
+    assert.ok(
+        readStatus === 200 || readStatus === 503 || readStatus === 500,
+        `GET /feedback should return 200/503/500, got ${readStatus}`
+    );
+    if (isServiceNowReachable(readStatus)) {
+        assert.ok(Array.isArray(readData), 'Feedback response should be an array');
+    }
+
+    // GET /feedback — HR sees all feedback
+    const { status: hrReadStatus } = await get('/feedback', hrToken);
+    assert.ok(
+        hrReadStatus === 200 || hrReadStatus === 503 || hrReadStatus === 500,
+        `HR GET /feedback should return 200/503/500, got ${hrReadStatus}`
+    );
+
+    // PUT /feedback/:id — HR can update status
+    const { status: updateStatus } = await put('/feedback/mock-feedback-id', {
+        status: 'Reviewed'
+    }, hrToken);
+    assert.ok(
+        updateStatus === 200 || updateStatus === 503 || updateStatus === 500,
+        `PUT /feedback/:id should return 200/503/500, got ${updateStatus}`
+    );
+
+    // GET /feedback/analytics — HR can see aggregated stats
+    const { status: analyticsStatus } = await get('/feedback/analytics', hrToken);
+    assert.ok(
+        analyticsStatus === 200 || analyticsStatus === 503 || analyticsStatus === 500,
+        `GET /feedback/analytics should return 200/503/500, got ${analyticsStatus}`
+    );
+
+    console.log('\u2705 Feedback CRUD (authenticated) positive-path passed');
+}
+
+async function testFeedbackRBAC() {
+    // Employee cannot update feedback status (HR/Manager only)
+    const employeeToken = createMockToken('employee');
+    const { status } = await put('/feedback/mock-id', { status: 'Reviewed' }, employeeToken);
+    assert.strictEqual(status, 403, `Employee should be forbidden from PUT /feedback/:id, got ${status}`);
+
+    // Employee cannot access analytics
+    const { status: analyticsStatus } = await get('/feedback/analytics', employeeToken);
+    assert.strictEqual(analyticsStatus, 403, `Employee should be forbidden from GET /feedback/analytics, got ${analyticsStatus}`);
+
+    console.log('\u2705 Feedback RBAC enforcement passed');
+}
+
+async function testFeedbackValidation() {
+    const token = createMockToken('employee');
+
+    // Invalid category
+    const { status: s1 } = await post('/feedback', { category: 'Invalid', rating: 3, comments: 'Test' }, token);
+    assert.strictEqual(s1, 400, 'Invalid feedback category should return 400');
+
+    // Rating out of range
+    const { status: s2 } = await post('/feedback', { category: 'Work Environment', rating: 10, comments: 'Test' }, token);
+    assert.strictEqual(s2, 400, 'Rating out of range should return 400');
+
+    // Empty comments
+    const { status: s3 } = await post('/feedback', { category: 'Work Environment', rating: 3, comments: '' }, token);
+    assert.strictEqual(s3, 400, 'Empty comments should return 400');
+
+    console.log('\u2705 Feedback input validation passed');
+}
+
 /* ── Test Runner ──────────────────────────────────────────────────────────── */
 
 const tests = [
@@ -941,6 +1044,11 @@ const tests = [
     testErrorResponseShape,
     testLoginResponseShape,
     testHealthResponseShape,
+    // ─ Feedback module tests ─
+    testFeedbackSecurityUnauthenticated,
+    testFeedbackAuthenticatedCRUD,
+    testFeedbackRBAC,
+    testFeedbackValidation,
 ];
 
 async function runTests() {
