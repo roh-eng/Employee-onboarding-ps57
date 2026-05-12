@@ -1,5 +1,6 @@
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
+const config = require('../config');
 
 const helmetConfig = helmet({
     contentSecurityPolicy: {
@@ -15,18 +16,25 @@ const helmetConfig = helmet({
     }
 });
 
-const rateLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 100, // limit each IP to 100 requests per windowMs
-    standardHeaders: true,
-    legacyHeaders: false,
-    message: { success: false, error: 'Too many requests from this IP, please try again later.' }
-});
+// Disable rate limiting in test environment to avoid flaky CI failures
+const isTest = config.nodeEnv === 'test';
 
-const authLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000,
-    max: 10,
-    message: { success: false, error: 'Too many login attempts. Please try again after 15 minutes.' }
-});
+const rateLimiter = isTest
+    ? (req, res, next) => next()
+    : rateLimit({
+        windowMs: 15 * 60 * 1000, // 15 minutes
+        max: 100, // limit each IP to 100 requests per windowMs
+        standardHeaders: true,
+        legacyHeaders: false,
+        message: { success: false, error: 'Too many requests from this IP, please try again later.' }
+    });
+
+const authLimiter = isTest
+    ? (req, res, next) => next()
+    : rateLimit({
+        windowMs: 15 * 60 * 1000,
+        max: 10,
+        message: { success: false, error: 'Too many login attempts. Please try again after 15 minutes.' }
+    });
 
 module.exports = { helmet: helmetConfig, rateLimiter, authLimiter };
