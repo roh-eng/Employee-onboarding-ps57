@@ -1,4 +1,4 @@
-# Enterprise Workflow & Delivery Intelligence Hub
+# Enterprise Workflow Hub
 
 [![Node.js](https://img.shields.io/badge/Node.js-18%2B-green)](https://nodejs.org/)
 [![Express](https://img.shields.io/badge/Express-5.x-blue)](https://expressjs.com/)
