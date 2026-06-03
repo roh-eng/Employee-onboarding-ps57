@@ -50,7 +50,7 @@ jobs:
           NODE_ENV: test
           PORT: 3000
           JWT_SECRET: test-secret-key
-          SERVICENOW_INSTANCE: https://example.service-now.com
+          SERVICENOW_INSTANCE: http://localhost:9999
           SERVICENOW_USERNAME: test
           SERVICENOW_PASSWORD: test
           SERVICENOW_SCOPE: x_test_scope
@@ -72,7 +72,7 @@ jobs:
         env:
           NODE_ENV: test
           JWT_SECRET: test-secret-key
-          SERVICENOW_INSTANCE: https://example.service-now.com
+          SERVICENOW_INSTANCE: http://localhost:9999
           SERVICENOW_USERNAME: test
           SERVICENOW_PASSWORD: test
           SERVICENOW_SCOPE: x_test_scope
