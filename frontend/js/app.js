@@ -340,7 +340,7 @@ async function renderEmployeePerformance() {
         { task_name:'Frontend Dashboard UI', assigned_team:'UI/UX', delay_risk:'Medium', sla_status:'In Progress' }
     ];
     let stats = fbStats, tasks = fbTasks;
-    try { const r = await apiFetch(`${API_BASE}/employee-stats`); if(r.ok){const d=await r.json();if(!d.error)stats=d;} } catch(e){}
+    try { const r = await apiFetch(`${API_BASE}/stats/employee`); if(r.ok){const d=await r.json();if(!d.error)stats=d;} } catch(e){}
     try { const r = await apiFetch(`${API_BASE}/sprint-tasks`);  if(r.ok){const d=await r.json();if(Array.isArray(d)&&d.length)tasks=d;} } catch(e){}
 
     const rate = stats.totalTasks > 0 ? Math.round((stats.sla.Met / stats.totalTasks) * 100) : 0;
