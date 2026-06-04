@@ -39,9 +39,10 @@ router.get('/employee', verifyToken, async (req, res, next) => {
         if (tasks.length > 0) {
             let totalProgress = 0;
             tasks.forEach(t => {
-                const prio = (t.priority && (t.priority.display_value || t.priority)) || 'Low';
-                if (String(prio).includes('1') || String(prio).toLowerCase().includes('high')) stats.priority.High++;
-                else if (String(prio).includes('2') || String(prio).toLowerCase().includes('medium') || String(prio).toLowerCase().includes('moderate')) stats.priority.Medium++;
+                // Sprint tasks have no `priority` field; derive priority from the AI delay_risk signal
+                const risk = String((t.delay_risk && (t.delay_risk.display_value || t.delay_risk)) || 'Low').toLowerCase();
+                if (risk.includes('high')) stats.priority.High++;
+                else if (risk.includes('medium') || risk.includes('moderate')) stats.priority.Medium++;
                 else stats.priority.Low++;
 
                 const sla = (t.sla_status && (t.sla_status.display_value || t.sla_status)) || 'In Progress';
