@@ -12,7 +12,7 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <script src="js/i18n.js"></script>
 </head>
-<body>
+<body class="dark-theme">
     <div class="app-container">
         <!-- Sidebar Navigation -->
         <nav class="sidebar">
@@ -39,6 +39,9 @@
                 <li data-view="menu" data-roles="hr,manager,employee">
                     <i class="fa-solid fa-utensils"></i> Daily Menu
                 </li>
+                <li data-view="feedback" data-roles="hr,manager,employee">
+                    <i class="fa-solid fa-comment-dots"></i> Feedback
+                </li>
 
                 <!-- Stage 2 -->
                 <li data-view="projects" data-roles="hr,manager"
@@ -53,7 +56,7 @@
                 </li>
 
                 <li id="theme-toggle" style="margin-top:auto;">
-                    <i class="fa-solid fa-moon"></i> <span>Dark Mode</span>
+                    <i class="fa-solid fa-sun"></i> <span>Light Mode</span>
                 </li>
             </ul>
             <div style="padding:24px;">
@@ -73,9 +76,16 @@
                     <div class="connection-status">
                         <span class="status-dot"></span> Connected to ServiceNow PDI
                     </div>
-                    <div class="notification-bell">
+                    <div class="notification-bell" id="notification-bell" title="Notifications">
                         <i class="fa-regular fa-bell"></i>
-                        <span class="badge">3</span>
+                        <span class="badge" id="notif-badge" style="display:none;">0</span>
+                        <div class="notif-dropdown hidden" id="notif-dropdown">
+                            <div class="notif-head">
+                                <span>Notifications</span>
+                                <button id="notif-mark-all" type="button">Mark all read</button>
+                            </div>
+                            <div class="notif-list" id="notif-list"></div>
+                        </div>
                     </div>
                     <div class="user-profile">
                         <img id="user-avatar"

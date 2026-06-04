@@ -7,22 +7,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="css/style.css">
-    <style>
-        .role-selector { display: flex; gap: 12px; margin-bottom: 24px; }
-        .role-btn {
-            flex: 1; padding: 14px 8px; border: 2px solid var(--panel-border);
-            border-radius: 10px; background: var(--bg-color); color: var(--text-main);
-            cursor: pointer; font-family: 'Inter', sans-serif; font-size: 0.85rem;
-            font-weight: 600; text-align: center; transition: all 0.2s;
-        }
-        .role-btn:hover { border-color: var(--primary); color: var(--primary); }
-        .role-btn.selected { border-color: var(--primary); background: rgba(79,70,229,0.1); color: var(--primary); }
-        .role-btn i { display: block; font-size: 1.4rem; margin-bottom: 6px; }
-        .demo-creds { background: rgba(79,70,229,0.08); border-radius: 8px; padding: 12px 16px; margin-bottom: 20px; font-size: 0.82rem; color: var(--text-muted); text-align: left; }
-        .demo-creds strong { color: var(--primary); }
-    </style>
 </head>
-<body>
+<body class="dark-theme">
     <div class="login-wrapper">
         <div class="login-card fade-in" style="max-width:460px;">
             <div class="login-logo">
@@ -30,24 +16,6 @@
             </div>
             <h2 style="font-size:1.6rem;font-weight:700;margin-bottom:6px;">Welcome Back</h2>
             <p style="color:var(--text-muted);font-size:0.95rem;margin-bottom:28px;">Enterprise Workflow &amp; Delivery Intelligence</p>
-
-            <!-- Role Selector -->
-            <div class="role-selector" id="role-selector">
-                <button class="role-btn selected" data-role="hr" onclick="selectRole(this)">
-                    <i class="fa-solid fa-user-tie"></i>HR Manager
-                </button>
-                <button class="role-btn" data-role="manager" onclick="selectRole(this)">
-                    <i class="fa-solid fa-briefcase"></i>Project Manager
-                </button>
-                <button class="role-btn" data-role="employee" onclick="selectRole(this)">
-                    <i class="fa-solid fa-user"></i>Employee
-                </button>
-            </div>
-
-            <!-- Demo Credentials hint -->
-            <div class="demo-creds" id="demo-hint">
-                <strong>HR Manager</strong> — Full access to all employee data, onboarding tasks, and reports.
-            </div>
 
             <p style="font-size:0.82rem;color:var(--text-muted);margin-bottom:16px;text-align:left;">
                 <i class="fa-solid fa-circle-info" style="color:var(--primary);"></i>
@@ -76,24 +44,9 @@
     </div>
 
     <script>
-        // Role selector is informational only — shows what each role can access.
-        // The actual role is ALWAYS resolved server-side from ServiceNow and
-        // returned in the JWT. The client-selected role is never stored or used.
-        let selectedRole = 'hr';
-
-        const roleDescriptions = {
-            hr: '<strong>HR Manager</strong> — Full access to all employee data, onboarding tasks, and reports.',
-            manager: '<strong>Project Manager</strong> — Access to Project Delivery, SLA Intelligence, and Performance dashboards.',
-            employee: '<strong>Employee</strong> — Access to your personal tasks and performance only.'
-        };
-
-        function selectRole(btn) {
-            document.querySelectorAll('.role-btn').forEach(b => b.classList.remove('selected'));
-            btn.classList.add('selected');
-            selectedRole = btn.getAttribute('data-role');
-            document.getElementById('demo-hint').innerHTML = roleDescriptions[selectedRole];
-        }
-
+        // Role is resolved entirely server-side from the user's ServiceNow
+        // account (sys_user / sys_user_has_role) and returned in the signed JWT.
+        // The client never chooses or influences the role.
         document.getElementById('login-form').addEventListener('submit', async (e) => {
             e.preventDefault();
             const btn = e.target.querySelector('button');

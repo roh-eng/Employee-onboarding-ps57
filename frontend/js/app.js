@@ -95,7 +95,114 @@ document.addEventListener('DOMContentLoaded', () => {
     chatClose.addEventListener('click', () => chatWindow.classList.add('hidden'));
     chatSend.addEventListener('click', sendChatMessage);
     chatInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') sendChatMessage(); });
+
+    initNotifications();
 });
+
+/* ── Notifications (live, backed by ServiceNow notification table) ────────── */
+function initNotifications() {
+    const bell = document.getElementById('notification-bell');
+    const dropdown = document.getElementById('notif-dropdown');
+    if (!bell || !dropdown) return;
+
+    refreshNotifCount();
+    setInterval(refreshNotifCount, 30000);
+
+    bell.addEventListener('click', (e) => {
+        if (dropdown.contains(e.target)) return; // clicks inside the panel handled separately
+        e.stopPropagation();
+        const opening = dropdown.classList.contains('hidden');
+        dropdown.classList.toggle('hidden');
+        if (opening) loadNotifList();
+    });
+    dropdown.addEventListener('click', (e) => e.stopPropagation());
+    document.addEventListener('click', () => dropdown.classList.add('hidden'));
+
+    const markAll = document.getElementById('notif-mark-all');
+    if (markAll) markAll.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        const unread = [...document.querySelectorAll('.notif-item.unread')];
+        for (const el of unread) await markNotifRead(el.dataset.id, el);
+    });
+
+    // HR / Manager broadcast composer
+    const role = (localStorage.getItem('userRole') || 'employee').toLowerCase();
+    if (role === 'hr' || role === 'manager') {
+        const composer = document.createElement('div');
+        composer.className = 'notif-compose';
+        composer.innerHTML = `
+            <input id="notif-compose-input" class="form-control" placeholder="Broadcast to everyone…" maxlength="240">
+            <button id="notif-compose-send" class="btn btn-primary" type="button" title="Send broadcast"><i class="fa-solid fa-paper-plane"></i></button>`;
+        dropdown.appendChild(composer);
+        composer.addEventListener('click', (e) => e.stopPropagation());
+        const sendBtn = composer.querySelector('#notif-compose-send');
+        const input = composer.querySelector('#notif-compose-input');
+        const send = async () => {
+            const message = input.value.trim();
+            if (!message) return;
+            sendBtn.disabled = true;
+            try {
+                const res = await apiFetch(`${API_BASE}/notifications/broadcast`, {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message, target: 'ALL' })
+                });
+                if (!res.ok) throw new Error();
+                input.value = '';
+                showToast('Broadcast sent to everyone.', 'success');
+                loadNotifList();
+                refreshNotifCount();
+            } catch (e) { showToast('Failed to send broadcast.', 'error'); }
+            finally { sendBtn.disabled = false; }
+        };
+        sendBtn.addEventListener('click', send);
+        input.addEventListener('keypress', (e) => { if (e.key === 'Enter') send(); });
+    }
+}
+
+async function refreshNotifCount() {
+    try {
+        const res = await apiFetch(`${API_BASE}/notifications/unread-count`);
+        if (!res.ok) return;
+        const { count } = await res.json();
+        const badge = document.getElementById('notif-badge');
+        if (badge) { badge.textContent = count; badge.style.display = count > 0 ? 'flex' : 'none'; }
+    } catch (e) { /* keep silent — bell just shows no count */ }
+}
+
+async function loadNotifList() {
+    const list = document.getElementById('notif-list');
+    if (!list) return;
+    list.innerHTML = '<div class="notif-empty">Loading…</div>';
+    try {
+        const res = await apiFetch(`${API_BASE}/notifications`);
+        const items = res.ok ? await res.json() : [];
+        if (!Array.isArray(items) || !items.length) {
+            list.innerHTML = '<div class="notif-empty">You\'re all caught up 🎉</div>';
+            return;
+        }
+        list.innerHTML = items.map(n => {
+            const id = (n.sys_id && n.sys_id.value) ? n.sys_id.value : n.sys_id;
+            const text = n.message || n.title || 'Notification';
+            return `<div class="notif-item ${n.read ? '' : 'unread'}" data-id="${id}">
+                        <div class="notif-msg">${text}</div>
+                        <div class="notif-meta"><i class="fa-solid fa-user-group"></i> ${n.recipient || 'ALL'} &middot; ${n.created || ''}</div>
+                    </div>`;
+        }).join('');
+        list.querySelectorAll('.notif-item.unread').forEach(el => {
+            el.addEventListener('click', (e) => { e.stopPropagation(); markNotifRead(el.dataset.id, el); });
+        });
+    } catch (e) {
+        list.innerHTML = '<div class="notif-empty">Could not load notifications.</div>';
+    }
+}
+
+async function markNotifRead(id, el) {
+    try {
+        const res = await apiFetch(`${API_BASE}/notifications/${id}/read`, { method: 'PUT' });
+        if (res.ok && el) el.classList.remove('unread');
+        refreshNotifCount();
+    } catch (e) { /* ignore */ }
+}
 
 async function loadView(viewName) {
     viewContainer.innerHTML = '<div style="display:flex;justify-content:center;align-items:center;height:300px;"><i class="fa-solid fa-spinner fa-spin fa-3x" style="color:var(--primary);"></i></div>';
@@ -108,6 +215,7 @@ async function loadView(viewName) {
         case 'slas':        await renderSLAIntelligence(); break;
         case 'performance': await renderEmployeePerformance(); break;
         case 'menu':        await renderDailyMenu(); break;
+        case 'feedback':    await renderFeedback(); break;
     }
 }
 
@@ -157,21 +265,62 @@ async function renderOverview() {
 }
 
 // ── HR DASHBOARD ────────────────────────────────────────────────────────────
+let _emps = [];
+let _empFilter = { predicate: () => true };
+const _hrState = { q: '', sortKey: '', sortDir: 1 };
+
 async function renderHRDashboard() {
     try {
         const res = await apiFetch(`${API_BASE}/employees`);
-        const employees = await res.json();
-        let html = `
-            <div class="topbar fade-in"><h2><i class="fa-solid fa-users" style="color:var(--primary);"></i> HR Dashboard</h2><button class="btn btn-primary" onclick="showAddEmployeeForm()"><i class="fa-solid fa-user-plus"></i> New Hire</button></div>
-            <div id="form-container"></div>
-            <div class="table-container fade-in"><table class="data-table"><thead><tr><th>Name</th><th>Department</th><th>Joining Date</th><th>Status</th></tr></thead><tbody>`;
-        employees.forEach(emp => {
-            const sc = emp.status === 'Onboarded' ? 'status-onboarded' : 'status-pending';
-            html += `<tr><td><div style="display:flex;align-items:center;gap:12px;"><img src="https://ui-avatars.com/api/?name=${emp.name}&background=random&color=fff&size=32" style="border-radius:50%;">${emp.name}</div></td><td>${emp.department}</td><td>${emp.joiningDate}</td><td><span class="status-badge ${sc}">${emp.status}</span></td></tr>`;
-        });
-        html += `</tbody></table></div>`;
-        viewContainer.innerHTML = html;
-    } catch(e) { viewContainer.innerHTML = `<p style="color:var(--danger);">Error loading employees.</p>`; }
+        _emps = res.ok ? await res.json() : [];
+        if (!Array.isArray(_emps)) _emps = [];
+    } catch (e) { viewContainer.innerHTML = `<p style="color:var(--danger);">Error loading employees.</p>`; return; }
+
+    _hrState.q = ''; _hrState.sortKey = ''; _hrState.sortDir = 1;
+    viewContainer.innerHTML = `
+        <div class="topbar fade-in"><h2><i class="fa-solid fa-users" style="color:var(--primary);"></i> HR Dashboard</h2><button class="btn btn-primary" onclick="showAddEmployeeForm()"><i class="fa-solid fa-user-plus"></i> New Hire</button></div>
+        <div id="form-container"></div>
+        <div class="toolbar fade-in">
+            <div class="search-box"><i class="fa-solid fa-magnifying-glass"></i><input id="emp-search" class="form-control" placeholder="Quick search…"></div>
+        </div>
+        <div id="emp-filter" class="fade-in"></div>
+        <div class="table-container fade-in"><table class="data-table">
+            <thead><tr>
+                <th class="sortable" data-key="name">Name</th>
+                <th class="sortable" data-key="department">Department</th>
+                <th class="sortable" data-key="joiningDate">Joining Date</th>
+                <th class="sortable" data-key="status">Status</th>
+            </tr></thead>
+            <tbody id="emp-tbody"></tbody>
+        </table></div>`;
+
+    document.getElementById('emp-search').addEventListener('input', (e) => { _hrState.q = e.target.value.toLowerCase(); renderEmpRows(); });
+    _empFilter = attachFilterBuilder('emp-filter', [
+        { key: 'name', label: 'Name' }, { key: 'department', label: 'Department' },
+        { key: 'joiningDate', label: 'Joining Date' }, { key: 'status', label: 'Status' }
+    ], renderEmpRows);
+    document.querySelectorAll('.data-table th.sortable').forEach(th => th.addEventListener('click', () => {
+        const k = th.dataset.key;
+        if (_hrState.sortKey === k) _hrState.sortDir *= -1; else { _hrState.sortKey = k; _hrState.sortDir = 1; }
+        setSortArrows(_hrState.sortKey, _hrState.sortDir);
+        renderEmpRows();
+    }));
+    renderEmpRows();
+}
+
+function renderEmpRows() {
+    let rows = _emps.filter(e => {
+        if (_hrState.q && !`${e.name} ${e.department} ${e.status}`.toLowerCase().includes(_hrState.q)) return false;
+        return _empFilter.predicate(e);
+    });
+    rows = sortRows(rows, _hrState.sortKey, _hrState.sortDir);
+    const tbody = document.getElementById('emp-tbody');
+    if (!tbody) return;
+    if (!rows.length) { tbody.innerHTML = `<tr><td colspan="4" style="text-align:center;color:var(--text-muted);padding:28px;">No matching employees.</td></tr>`; return; }
+    tbody.innerHTML = rows.map(emp => {
+        const sc = emp.status === 'Onboarded' ? 'status-onboarded' : 'status-pending';
+        return `<tr><td><div style="display:flex;align-items:center;gap:12px;"><img src="https://ui-avatars.com/api/?name=${encodeURIComponent(emp.name || '')}&background=random&color=fff&size=32" style="border-radius:50%;">${emp.name || ''}</div></td><td>${emp.department || ''}</td><td>${emp.joiningDate || ''}</td><td><span class="status-badge ${sc}">${emp.status || 'Pending'}</span></td></tr>`;
+    }).join('');
 }
 
 function showAddEmployeeForm() {
@@ -204,19 +353,152 @@ function showAddEmployeeForm() {
     });
 }
 
+// ── Shared sort helper (paints ▲/▼ on the active column header) ───────────────
+function setSortArrows(activeKey, dir) {
+    document.querySelectorAll('.data-table th.sortable').forEach(th => {
+        const label = th.getAttribute('data-label') || th.textContent.replace(/\s*[▲▼]\s*$/, '');
+        th.setAttribute('data-label', label);
+        th.innerHTML = label + (th.dataset.key === activeKey ? (dir === 1 ? ' ▲' : ' ▼') : '');
+    });
+}
+
+function sortRows(rows, key, dir) {
+    if (!key) return rows;
+    return [...rows].sort((a, b) => {
+        const av = (a[key] ?? '').toString().toLowerCase();
+        const bv = (b[key] ?? '').toString().toLowerCase();
+        if (av < bv) return -dir;
+        if (av > bv) return dir;
+        return 0;
+    });
+}
+
+// ── Reusable ServiceNow-style condition builder (field / oper / value) ────────
+const FILTER_OPERS = [
+    ['is', 'is'], ['is_not', 'is not'], ['contains', 'contains'],
+    ['not_contains', 'does not contain'], ['starts', 'starts with'],
+    ['ends', 'ends with'], ['empty', 'is empty']
+];
+
+function attachFilterBuilder(mountId, fields, onChange) {
+    const mount = document.getElementById(mountId);
+    if (!mount) return { predicate: () => true };
+
+    const rowHtml = () => `
+        <div class="filter-row">
+            <select class="form-control f-field"><option value="">-- choose field --</option>${fields.map(f => `<option value="${f.key}">${f.label}</option>`).join('')}</select>
+            <select class="form-control f-oper"><option value="">-- oper --</option>${FILTER_OPERS.map(o => `<option value="${o[0]}">${o[1]}</option>`).join('')}</select>
+            <input class="form-control f-value" placeholder="-- value --">
+            <button type="button" class="btn btn-outline f-remove" title="Remove condition"><i class="fa-solid fa-xmark"></i></button>
+        </div>`;
+
+    mount.innerHTML = `<div class="filter-builder">
+            <div class="filter-rows">${rowHtml()}</div>
+            <button type="button" class="btn btn-outline f-add" style="margin-top:12px;"><i class="fa-solid fa-plus"></i> Add condition</button>
+        </div>`;
+    const rows = mount.querySelector('.filter-rows');
+
+    mount.addEventListener('input', (e) => { if (e.target.classList.contains('f-value')) onChange(); });
+    mount.addEventListener('change', (e) => {
+        if (e.target.classList.contains('f-oper')) {
+            const vi = e.target.parentElement.querySelector('.f-value');
+            if (vi) { vi.disabled = e.target.value === 'empty'; if (vi.disabled) vi.value = ''; }
+        }
+        if (e.target.classList.contains('f-field') || e.target.classList.contains('f-oper')) onChange();
+    });
+    mount.addEventListener('click', (e) => {
+        if (e.target.closest('.f-add')) { rows.insertAdjacentHTML('beforeend', rowHtml()); }
+        else if (e.target.closest('.f-remove')) {
+            const r = e.target.closest('.filter-row');
+            if (rows.querySelectorAll('.filter-row').length > 1) r.remove();
+            else { r.querySelector('.f-field').value = ''; r.querySelector('.f-oper').value = ''; const v = r.querySelector('.f-value'); v.value = ''; v.disabled = false; }
+            onChange();
+        }
+    });
+
+    function predicate(item) {
+        const conds = [...rows.querySelectorAll('.filter-row')].map(r => ({
+            field: r.querySelector('.f-field').value,
+            oper: r.querySelector('.f-oper').value,
+            value: r.querySelector('.f-value').value
+        })).filter(c => c.field && c.oper && (c.value !== '' || c.oper === 'empty'));
+
+        return conds.every(c => {
+            const v = (item[c.field] ?? '').toString().toLowerCase();
+            const cv = (c.value || '').toLowerCase();
+            switch (c.oper) {
+                case 'is': return v === cv;
+                case 'is_not': return v !== cv;
+                case 'contains': return v.includes(cv);
+                case 'not_contains': return !v.includes(cv);
+                case 'starts': return v.startsWith(cv);
+                case 'ends': return v.endsWith(cv);
+                case 'empty': return v === '';
+                default: return true;
+            }
+        });
+    }
+    return { predicate };
+}
+
 // ── EMPLOYEE TASKS ──────────────────────────────────────────────────────────
+let _tasks = [];
+let _taskFilter = { predicate: () => true };
+const _taskState = { q: '', sortKey: '', sortDir: 1 };
+
 async function renderEmployeeTasks() {
     try {
-        const tasks = await (await apiFetch(`${API_BASE}/tasks`)).json();
-        let html = `<div class="topbar fade-in"><h2><i class="fa-solid fa-list-check" style="color:var(--primary);"></i> Onboarding Tasks</h2></div><div class="table-container fade-in"><table class="data-table"><thead><tr><th>Employee</th><th>Task Type</th><th>Assigned To</th><th>Status</th><th>Action</th></tr></thead><tbody>`;
-        tasks.forEach(t => {
-            const sc = t.status === 'Completed' ? 'status-completed' : t.status === 'In Progress' ? 'status-inprogress' : 'status-pending';
-            const action = t.status !== 'Completed' ? `<button class="btn btn-primary" style="padding:6px 12px;font-size:0.85rem;" onclick="completeTask('${t.id}')">Complete</button>` : `<i class="fa-solid fa-check" style="color:var(--success);"></i>`;
-            html += `<tr><td>${t.employeeName}</td><td>${t.taskType}</td><td>${t.assignedTo}</td><td><span class="status-badge ${sc}">${t.status}</span></td><td>${action}</td></tr>`;
-        });
-        html += `</tbody></table></div>`;
-        viewContainer.innerHTML = html;
-    } catch(e) { viewContainer.innerHTML = `<p style="color:var(--danger);">Error loading tasks.</p>`; }
+        const r = await apiFetch(`${API_BASE}/tasks`);
+        _tasks = r.ok ? await r.json() : [];
+        if (!Array.isArray(_tasks)) _tasks = [];
+    } catch (e) { viewContainer.innerHTML = `<p style="color:var(--danger);">Error loading tasks.</p>`; return; }
+
+    _taskState.q = ''; _taskState.status = 'All'; _taskState.sortKey = ''; _taskState.sortDir = 1;
+    viewContainer.innerHTML = `
+        <div class="topbar fade-in"><h2><i class="fa-solid fa-list-check" style="color:var(--primary);"></i> Onboarding Tasks</h2></div>
+        <div class="toolbar fade-in">
+            <div class="search-box"><i class="fa-solid fa-magnifying-glass"></i><input id="task-search" class="form-control" placeholder="Quick search…"></div>
+        </div>
+        <div id="task-filter" class="fade-in"></div>
+        <div class="table-container fade-in"><table class="data-table">
+            <thead><tr>
+                <th class="sortable" data-key="employeeName">Employee</th>
+                <th class="sortable" data-key="taskType">Task Type</th>
+                <th class="sortable" data-key="assignedTo">Assigned To</th>
+                <th class="sortable" data-key="status">Status</th>
+                <th>Action</th>
+            </tr></thead>
+            <tbody id="task-tbody"></tbody>
+        </table></div>`;
+
+    document.getElementById('task-search').addEventListener('input', (e) => { _taskState.q = e.target.value.toLowerCase(); renderTaskRows(); });
+    _taskFilter = attachFilterBuilder('task-filter', [
+        { key: 'employeeName', label: 'Employee' }, { key: 'taskType', label: 'Task Type' },
+        { key: 'assignedTo', label: 'Assigned To' }, { key: 'status', label: 'Status' }
+    ], renderTaskRows);
+    document.querySelectorAll('.data-table th.sortable').forEach(th => th.addEventListener('click', () => {
+        const k = th.dataset.key;
+        if (_taskState.sortKey === k) _taskState.sortDir *= -1; else { _taskState.sortKey = k; _taskState.sortDir = 1; }
+        setSortArrows(_taskState.sortKey, _taskState.sortDir);
+        renderTaskRows();
+    }));
+    renderTaskRows();
+}
+
+function renderTaskRows() {
+    let rows = _tasks.filter(t => {
+        if (_taskState.q && !`${t.employeeName} ${t.taskType} ${t.assignedTo} ${t.status}`.toLowerCase().includes(_taskState.q)) return false;
+        return _taskFilter.predicate(t);
+    });
+    rows = sortRows(rows, _taskState.sortKey, _taskState.sortDir);
+    const tbody = document.getElementById('task-tbody');
+    if (!tbody) return;
+    if (!rows.length) { tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:28px;">No matching tasks.</td></tr>`; return; }
+    tbody.innerHTML = rows.map(t => {
+        const sc = t.status === 'Completed' ? 'status-completed' : t.status === 'In Progress' ? 'status-inprogress' : 'status-pending';
+        const action = t.status !== 'Completed' ? `<button class="btn btn-primary" style="padding:6px 12px;font-size:0.85rem;" onclick="completeTask('${t.id}')">Complete</button>` : `<i class="fa-solid fa-check" style="color:var(--success);"></i>`;
+        return `<tr><td>${t.employeeName}</td><td>${t.taskType}</td><td>${t.assignedTo}</td><td><span class="status-badge ${sc}">${t.status || 'Pending'}</span></td><td>${action}</td></tr>`;
+    }).join('');
 }
 
 async function completeTask(id) {
@@ -251,6 +533,85 @@ async function renderReportIssue() {
         } catch(err) {
             showToast('Failed to create ticket.', 'error');
             btn.innerHTML = 'Submit Ticket to ServiceNow'; btn.disabled = false;
+        }
+    });
+}
+
+// ── EMPLOYEE FEEDBACK ─────────────────────────────────────────────────────────
+async function renderFeedback() {
+    const role = (localStorage.getItem('userRole') || 'employee').toLowerCase();
+    const isManager = role === 'hr' || role === 'manager';
+    const categories = ['Work Environment', 'Management', 'Facilities', 'IT Support', 'Onboarding Experience', 'Other'];
+
+    let items = [];
+    try { const r = await apiFetch(`${API_BASE}/feedback`); if (r.ok) { const d = await r.json(); if (Array.isArray(d)) items = d; } } catch (e) {}
+
+    let html = `
+        <div class="topbar fade-in"><h2><i class="fa-solid fa-comment-dots" style="color:var(--primary);"></i> Employee Feedback</h2></div>
+        <div class="card fade-in" style="max-width:640px;margin:0 auto 24px;">
+            <h3 style="margin-bottom:18px;">Share your feedback</h3>
+            <form id="feedback-form" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+                <div class="form-group" style="margin-bottom:0;"><label>Category</label>
+                    <select id="fb-category" class="form-control">${categories.map(c => `<option>${c}</option>`).join('')}</select>
+                </div>
+                <div class="form-group" style="margin-bottom:0;"><label>Rating</label>
+                    <select id="fb-rating" class="form-control">
+                        <option value="5">★★★★★ Excellent</option>
+                        <option value="4">★★★★ Good</option>
+                        <option value="3" selected>★★★ Average</option>
+                        <option value="2">★★ Poor</option>
+                        <option value="1">★ Very Poor</option>
+                    </select>
+                </div>
+                <div class="form-group" style="margin-bottom:0;grid-column:1 / -1;"><label>Your feedback</label>
+                    <textarea id="fb-comments" class="form-control" rows="3" required placeholder="Tell us about your experience…"></textarea>
+                </div>
+                <div style="grid-column:1 / -1;display:flex;justify-content:flex-end;">
+                    <button type="submit" class="btn btn-primary"><i class="fa-solid fa-paper-plane"></i> Submit Feedback</button>
+                </div>
+            </form>
+        </div>
+        <div class="table-container fade-in"><table class="data-table"><thead><tr>
+            ${isManager ? '<th>Employee</th>' : ''}<th>Category</th><th>Rating</th><th>Feedback</th><th>Submitted</th>
+        </tr></thead><tbody>`;
+
+    if (!items.length) {
+        html += `<tr><td colspan="${isManager ? 5 : 4}" style="text-align:center;color:var(--text-muted);padding:28px;">No feedback submitted yet.</td></tr>`;
+    } else {
+        items.forEach(f => {
+            const n = parseInt(f.rating) || 0;
+            const stars = '★'.repeat(n) + '☆'.repeat(5 - n);
+            html += `<tr>
+                ${isManager ? `<td>${f.employee || '—'}</td>` : ''}
+                <td><span class="status-badge status-inprogress">${f.category || 'General'}</span></td>
+                <td style="color:#fbbf24;letter-spacing:2px;white-space:nowrap;">${stars}</td>
+                <td>${f.comments || ''}</td>
+                <td style="white-space:nowrap;">${f.submittedOn || ''}</td>
+            </tr>`;
+        });
+    }
+    html += `</tbody></table></div>`;
+    viewContainer.innerHTML = html;
+
+    document.getElementById('feedback-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const btn = e.target.querySelector('button[type="submit"]');
+        btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Submitting...';
+        try {
+            const res = await apiFetch(`${API_BASE}/feedback`, {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    category: document.getElementById('fb-category').value,
+                    rating: parseInt(document.getElementById('fb-rating').value),
+                    comments: document.getElementById('fb-comments').value
+                })
+            });
+            if (!res.ok) { const d = await res.json().catch(() => ({})); throw new Error(d.error || 'Failed to submit'); }
+            showToast('Thanks! Your feedback was submitted.', 'success');
+            loadView('feedback');
+        } catch (err) {
+            showToast(err.message || 'Failed to submit feedback.', 'error');
+            btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Submit Feedback';
         }
     });
 }
