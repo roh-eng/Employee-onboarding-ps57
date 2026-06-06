@@ -23,5 +23,18 @@ module.exports = {
     snowScope: process.env.SERVICENOW_SCOPE,
     geminiKey: process.env.GEMINI_API_KEY,
     jwtSecret: jwtSecret || 'dev-only-insecure-jwt-secret-do-not-use-in-production',
-    jwtExpiresIn: process.env.JWT_EXPIRES_IN || '8h'
+    jwtExpiresIn: process.env.JWT_EXPIRES_IN || '8h',
+
+    // Shared secret used to verify inbound HRMS webhook signatures (optional)
+    hrmsWebhookSecret: process.env.HRMS_WEBHOOK_SECRET,
+
+    // SMTP settings for real email alerts (optional — falls back to in-app only)
+    smtp: {
+        host: process.env.SMTP_HOST,
+        port: parseInt(process.env.SMTP_PORT || '587', 10),
+        secure: process.env.SMTP_SECURE === 'true',
+        user: process.env.SMTP_USER,
+        pass: process.env.SMTP_PASS,
+        from: process.env.SMTP_FROM || process.env.SMTP_USER
+    }
 };

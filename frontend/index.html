@@ -18,52 +18,66 @@
         <nav class="sidebar">
             <div class="sidebar-header">
                 <i class="fa-solid fa-layer-group"></i>
-                <span>Workflow Hub</span>
+                <span data-i18n="workflowHub">Workflow Hub</span>
             </div>
             <ul class="nav-menu" id="nav-menu">
                 <li class="active" data-view="overview" data-roles="hr,manager,employee">
-                    <i class="fa-solid fa-chart-line"></i> Company Overview
+                    <i class="fa-solid fa-chart-line"></i> <span data-i18n="companyOverview">Company Overview</span>
                 </li>
                 <!-- HR only -->
                 <li data-view="employees" data-roles="hr">
-                    <i class="fa-solid fa-users"></i> HR Dashboard
+                    <i class="fa-solid fa-users"></i> <span data-i18n="hrDashboard">HR Dashboard</span>
                 </li>
                 <!-- HR and Manager -->
                 <li data-view="tasks" data-roles="hr,manager">
-                    <i class="fa-solid fa-list-check"></i> Employee Tasks
+                    <i class="fa-solid fa-list-check"></i> <span data-i18n="employeeTasks">Employee Tasks</span>
                 </li>
                 <!-- All roles -->
                 <li data-view="issue" data-roles="hr,manager,employee">
-                    <i class="fa-solid fa-ticket"></i> Report Issue
+                    <i class="fa-solid fa-ticket"></i> <span data-i18n="reportIssue">Report Issue</span>
                 </li>
                 <li data-view="menu" data-roles="hr,manager,employee">
-                    <i class="fa-solid fa-utensils"></i> Daily Menu
+                    <i class="fa-solid fa-utensils"></i> <span data-i18n="dailyMenu">Daily Menu</span>
                 </li>
                 <li data-view="feedback" data-roles="hr,manager,employee">
-                    <i class="fa-solid fa-comment-dots"></i> Feedback
+                    <i class="fa-solid fa-comment-dots"></i> <span data-i18n="feedback">Feedback</span>
                 </li>
 
                 <!-- Stage 2 -->
                 <li data-view="projects" data-roles="hr,manager"
                     style="margin-top:16px;border-top:1px solid rgba(255,255,255,0.05);border-radius:0;padding-top:24px;">
-                    <i class="fa-solid fa-diagram-project"></i> Project Delivery
+                    <i class="fa-solid fa-diagram-project"></i> <span data-i18n="projectDelivery">Project Delivery</span>
                 </li>
                 <li data-view="slas" data-roles="hr,manager">
-                    <i class="fa-solid fa-stopwatch"></i> SLA Intelligence
+                    <i class="fa-solid fa-stopwatch"></i> <span data-i18n="slaIntelligence">SLA Intelligence</span>
                 </li>
                 <li data-view="performance" data-roles="hr,manager,employee">
-                    <i class="fa-solid fa-chart-pie"></i> My Performance
+                    <i class="fa-solid fa-chart-pie"></i> <span data-i18n="myPerformance">My Performance</span>
+                </li>
+                <li data-view="reports" data-roles="hr,manager">
+                    <i class="fa-solid fa-file-export"></i> <span data-i18n="reports">Reports</span>
+                </li>
+                <li data-view="webhooks" data-roles="hr">
+                    <i class="fa-solid fa-plug"></i> <span data-i18n="integrations">Integrations</span>
                 </li>
 
                 <li id="theme-toggle" style="margin-top:auto;">
                     <i class="fa-solid fa-sun"></i> <span>Light Mode</span>
                 </li>
             </ul>
-            <div style="padding:24px;">
+            <div style="padding:0 24px 12px;">
+                <label for="lang-select" style="display:block;font-size:0.72rem;text-transform:uppercase;letter-spacing:0.06em;color:#9ca3af;margin-bottom:6px;" data-i18n="language">Language</label>
+                <select id="lang-select" class="form-control" style="padding:8px 12px;">
+                    <option value="en">English</option>
+                    <option value="es">Espanol</option>
+                    <option value="fr">Francais</option>
+                </select>
+            </div>
+            <div style="padding:24px;padding-top:0;">
                 <button id="logout-btn" class="btn btn-outline"
                     style="width:100%;justify-content:center;color:#9ca3af;border-color:rgba(255,255,255,0.1);"
                     onclick="logout()">
-                    <i class="fa-solid fa-right-from-bracket"></i> Logout
+                    <i class="fa-solid fa-right-from-bracket"></i> <span data-i18n="logout">Logout</span>
                 </button>
             </div>
         </nav>
@@ -74,14 +88,14 @@
                 <div class="header-left"></div>
                 <div class="header-right">
                     <div class="connection-status">
-                        <span class="status-dot"></span> Connected to ServiceNow PDI
+                        <span class="status-dot"></span> <span data-i18n="connected">Connected to ServiceNow PDI</span>
                     </div>
                     <div class="notification-bell" id="notification-bell" title="Notifications">
                         <i class="fa-regular fa-bell"></i>
                         <span class="badge" id="notif-badge" style="display:none;">0</span>
                         <div class="notif-dropdown hidden" id="notif-dropdown">
                             <div class="notif-head">
-                                <span>Notifications</span>
+                                <span data-i18n="notifications">Notifications</span>
                                 <button id="notif-mark-all" type="button">Mark all read</button>
                             </div>
                             <div class="notif-list" id="notif-list"></div>

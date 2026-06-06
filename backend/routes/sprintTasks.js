@@ -2,6 +2,7 @@ const express = require('express');
 const snowClient = require('../services/snowClient');
 const config = require('../config');
 const { verifyToken, requireRole } = require('../middleware/auth');
+const { fireEvent } = require('./webhooks');
 
 const router = express.Router();
 const TABLE = `${config.snowScope}_project_sprint_task`;
@@ -31,7 +32,17 @@ router.put('/:id', verifyToken, requireRole('hr', 'manager'), async (req, res, n
     try {
         const payload = { progress: req.body.progress };
         const response = await snowClient.put(`/${TABLE}/${req.params.id}`, payload);
-        res.json(response.data.result);
+        const result = response.data.result;
+        // ServiceNow business rules may flip sla_status on update — notify subscribers on a breach
+        if (getVal(result?.sla_status) === 'Breached') {
+            fireEvent('sla.breached', {
+                sys_id: getVal(result.sys_id),
+                task_name: getVal(result.short_description) || getVal(result.task_name),
+                sla_status: 'Breached',
+                progress: getVal(result.progress, 0)
+            }).catch(() => {});
+        }
+        res.json(result);
     } catch (err) { next(err); }
 });
 

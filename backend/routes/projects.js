@@ -4,6 +4,7 @@ const config = require('../config');
 const logger = require('../services/logger');
 const { verifyToken, requireRole } = require('../middleware/auth');
 const { projectRules, handleValidationErrors } = require('../middleware/validate');
+const { fireEvent } = require('./webhooks');
 
 const router = express.Router();
 const TABLE = `${config.snowScope}_project`;
@@ -27,6 +28,7 @@ router.post('/', verifyToken, requireRole('hr', 'manager'), projectRules, handle
         };
         const response = await snowClient.post(`/${TABLE}`, payload);
         logger.info('Project created', { id: response.data.result?.sys_id });
+        fireEvent('project.updated', response.data.result).catch(() => {});
         res.status(201).json(response.data.result);
     } catch (err) { next(err); }
 });

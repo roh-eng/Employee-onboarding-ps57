@@ -3,6 +3,7 @@ const snowClient = require('../services/snowClient');
 const config = require('../config');
 const { verifyToken, requireRole } = require('../middleware/auth');
 const { taskRules, handleValidationErrors } = require('../middleware/validate');
+const { fireEvent } = require('./webhooks');
 
 const router = express.Router();
 const TABLE = `${config.snowScope}_onboarding_task`;
@@ -29,7 +30,9 @@ router.put('/:id', verifyToken, requireRole('hr', 'manager'), taskRules, handleV
     try {
         const payload = { status: req.body.status };
         const response = await snowClient.put(`/${TABLE}/${req.params.id}`, payload);
-        res.json(formatTask(response.data.result));
+        const task = formatTask(response.data.result);
+        if (task.status === 'Completed') fireEvent('task.completed', task).catch(() => {});
+        res.json(task);
     } catch (err) { next(err); }
 });
 

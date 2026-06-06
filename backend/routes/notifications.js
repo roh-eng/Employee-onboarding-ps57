@@ -3,9 +3,23 @@ const snowClient = require('../services/snowClient');
 const config = require('../config');
 const logger = require('../services/logger');
 const { verifyToken, requireRole } = require('../middleware/auth');
+const { broadcast } = require('../services/realtime');
+const { sendMail, isConfigured: smtpConfigured } = require('../services/mailer');
 
 const router = express.Router();
 const TABLE = `${config.snowScope}_notification`;
+
+/* ── Push a live notification to all connected WebSocket clients ─────────── */
+function pushLive(item) {
+    try {
+        broadcast('notifications', {
+            title: item.title,
+            message: item.message,
+            type: item.type || 'Info',
+            recipient: item.recipient || 'ALL'
+        });
+    } catch (e) { /* WS unavailable — in-app polling still covers it */ }
+}
 
 /* ── In-memory fallback store when ServiceNow table is not yet created ─── */
 const memoryStore = [];
@@ -54,6 +68,7 @@ router.post('/', verifyToken, requireRole('hr', 'manager'), async (req, res, nex
         };
         const response = await snowClient.post(`/${TABLE}`, payload);
         logger.info('Notification created', { id: response.data.result?.sys_id });
+        pushLive(payload);
         res.status(201).json({ success: true, data: response.data.result });
     } catch (err) {
         // In-memory fallback when ServiceNow table missing
@@ -69,6 +84,7 @@ router.post('/', verifyToken, requireRole('hr', 'manager'), async (req, res, nex
         };
         memoryStore.push(item);
         logger.info('Notification stored in-memory', { id: item.sys_id });
+        pushLive(item);
         res.status(201).json({ success: true, data: item, note: 'Stored in-memory (ServiceNow table not configured).' });
     }
 });
@@ -115,6 +131,7 @@ router.post('/broadcast', verifyToken, requireRole('hr', 'manager'), async (req,
         };
         const response = await snowClient.post(`/${TABLE}`, payload);
         logger.info('Broadcast sent', { id: response.data.result?.sys_id, target });
+        pushLive(payload);
         res.status(201).json({ success: true, data: response.data.result });
     } catch (err) {
         const item = {
@@ -129,6 +146,7 @@ router.post('/broadcast', verifyToken, requireRole('hr', 'manager'), async (req,
         };
         memoryStore.push(item);
         logger.info('Broadcast stored in-memory', { id: item.sys_id });
+        pushLive(item);
         res.status(201).json({ success: true, data: item, note: 'Stored in-memory (ServiceNow table not configured).' });
     }
 });
@@ -149,26 +167,41 @@ router.post('/email-alert', verifyToken, requireRole('hr', 'manager'), async (re
             recipient: to
         };
 
+        // 1) Persist the in-app notification (ServiceNow, or in-memory fallback)
+        let data;
+        let storeNote = 'Notification created.';
         try {
             const response = await snowClient.post(`/${TABLE}`, payload);
-            logger.info('Email alert notification created', { id: response.data.result?.sys_id, to });
-            res.status(201).json({ success: true, data: response.data.result, note: 'Notification created. Integrate SMTP for real email delivery.' });
+            data = response.data.result;
+            logger.info('Email alert notification created', { id: data?.sys_id, to });
         } catch (snErr) {
-            // In-memory fallback when ServiceNow table missing
-            const item = {
+            data = {
                 sys_id: String(memoryId++),
-                title: subject,
-                message: body,
-                type: priority === 'High' ? 'Urgent' : 'Email',
-                recipient: to,
+                ...payload,
                 read: false,
                 created: new Date().toISOString(),
                 createdBy: req.user.userName
             };
-            memoryStore.push(item);
-            logger.info('Email alert stored in-memory', { id: item.sys_id, to });
-            res.status(201).json({ success: true, data: item, note: 'Stored in-memory (ServiceNow table not configured). Integrate SMTP for real email delivery.' });
+            memoryStore.push(data);
+            storeNote = 'Stored in-memory (ServiceNow table not configured).';
+            logger.info('Email alert stored in-memory', { id: data.sys_id, to });
         }
+        pushLive(payload);
+
+        // 2) Attempt real email delivery when `to` is an address and SMTP is configured
+        let emailNote;
+        if (/.+@.+\..+/.test(to)) {
+            const result = await sendMail({ to, subject, text: body });
+            emailNote = result.sent
+                ? `Email sent to ${to}.`
+                : `Email not sent (${result.reason}).`;
+        } else {
+            emailNote = smtpConfigured()
+                ? `Recipient "${to}" is a group, not an address — delivered in-app only.`
+                : 'SMTP not configured — delivered in-app only.';
+        }
+
+        res.status(201).json({ success: true, data, note: `${storeNote} ${emailNote}` });
     } catch (err) { next(err); }
 });
 

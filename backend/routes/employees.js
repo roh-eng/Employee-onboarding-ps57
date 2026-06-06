@@ -4,6 +4,7 @@ const config = require('../config');
 const logger = require('../services/logger');
 const { verifyToken, requireRole } = require('../middleware/auth');
 const { employeeRules, handleValidationErrors } = require('../middleware/validate');
+const { fireEvent } = require('./webhooks');
 
 const router = express.Router();
 const TABLE = `${config.snowScope}_employee`;
@@ -35,7 +36,9 @@ router.post('/', verifyToken, requireRole('hr'), employeeRules, handleValidation
         };
         const response = await snowClient.post(`/${TABLE}`, payload);
         logger.info('Employee created', { id: response.data.result?.sys_id });
-        res.status(201).json(formatEmployee(response.data.result));
+        const employee = formatEmployee(response.data.result);
+        fireEvent('employee.created', employee).catch(() => {});
+        res.status(201).json(employee);
     } catch (err) { next(err); }
 });
 

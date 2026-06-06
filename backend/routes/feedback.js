@@ -4,6 +4,7 @@ const config = require('../config');
 const logger = require('../services/logger');
 const { verifyToken, requireRole } = require('../middleware/auth');
 const { feedbackRules, handleValidationErrors } = require('../middleware/validate');
+const { fireEvent } = require('./webhooks');
 
 const router = express.Router();
 const TABLE = `${config.snowScope}_employee_feedback`;
@@ -55,6 +56,7 @@ router.post('/', verifyToken, feedbackRules, handleValidationErrors, async (req,
         };
         const response = await snowClient.post(`/${TABLE}`, payload);
         logger.info('Feedback submitted', { id: response.data.result?.sys_id, user: req.user.userName });
+        fireEvent('feedback.submitted', { employee: req.user.userName, category, rating: req.body.rating }).catch(() => {});
         res.status(201).json(response.data.result);
     } catch (err) { next(err); }
 });

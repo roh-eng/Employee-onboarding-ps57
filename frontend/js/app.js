@@ -16,6 +16,23 @@ async function apiFetch(url, options = {}) {
     return res;
 }
 
+/* ── i18n helpers for dynamically-rendered content ───────────────────────── */
+// Use inline translation (not data-i18n) for table rows that re-render on filter/sort.
+function tr(key, fallback) {
+    return (window.I18N && I18N.t) ? I18N.t(key, fallback) : (fallback || key);
+}
+// Map ServiceNow status/risk values to i18n keys (comparisons stay on the raw value).
+const STATUS_KEYS = {
+    'Onboarded': 'onboarded', 'Pending': 'pending', 'Completed': 'completed', 'In Progress': 'inProgress',
+    'Available': 'available', 'Unavailable': 'unavailable', 'Met': 'met', 'Breached': 'breached',
+    'High': 'high', 'Medium': 'medium', 'Low': 'low'
+};
+function trStatus(v) {
+    if (v == null || v === '') return '';
+    const k = STATUS_KEYS[v];
+    return k ? tr(k, v) : v;
+}
+
 const viewContainer = document.getElementById('view-container');
 const navItems = document.querySelectorAll('.nav-menu li');
 const chatToggle = document.getElementById('chat-toggle');
@@ -84,10 +101,11 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     if (themeToggle) {
+        // Restore the saved theme (defaults to dark — the body ships with .dark-theme)
+        applyTheme(localStorage.getItem('theme') || 'dark');
         themeToggle.addEventListener('click', () => {
-            const isDark = document.body.classList.toggle('dark-theme');
-            themeToggle.querySelector('i').classList.replace(isDark ? 'fa-moon' : 'fa-sun', isDark ? 'fa-sun' : 'fa-moon');
-            themeToggle.querySelector('span').innerText = isDark ? 'Light Mode' : 'Dark Mode';
+            const isDark = document.body.classList.contains('dark-theme');
+            applyTheme(isDark ? 'light' : 'dark');
         });
     }
 
@@ -97,7 +115,72 @@ document.addEventListener('DOMContentLoaded', () => {
     chatInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') sendChatMessage(); });
 
     initNotifications();
+    initLiveUpdates();
+    initLanguageSwitcher();
 });
+
+/* ── Theme (persisted across reloads) ─────────────────────────────────────── */
+function applyTheme(theme) {
+    const isDark = theme !== 'light';
+    document.body.classList.toggle('dark-theme', isDark);
+    localStorage.setItem('theme', isDark ? 'dark' : 'light');
+    if (themeToggle) {
+        const icon = themeToggle.querySelector('i');
+        const label = themeToggle.querySelector('span');
+        // Button offers the *other* mode: dark active → "Light Mode" (sun), and vice-versa
+        if (icon) { icon.classList.remove('fa-sun', 'fa-moon'); icon.classList.add(isDark ? 'fa-sun' : 'fa-moon'); }
+        if (label) label.innerText = isDark ? 'Light Mode' : 'Dark Mode';
+    }
+}
+
+/* ── Live updates over WebSocket (real-time notification push) ────────────── */
+let _liveSocket = null;
+let _liveRetry = null;
+function initLiveUpdates() {
+    if (!('WebSocket' in window)) return;
+    try {
+        const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+        // API server hosts the WS endpoint on /ws (see backend/services/realtime.js)
+        const host = location.hostname || 'localhost';
+        _liveSocket = new WebSocket(`${proto}://${host}:3000/ws`);
+    } catch (e) { return; }
+
+    _liveSocket.addEventListener('open', () => {
+        clearTimeout(_liveRetry);
+        _liveSocket.send(JSON.stringify({ type: 'subscribe', channel: 'notifications' }));
+    });
+
+    _liveSocket.addEventListener('message', (evt) => {
+        let msg;
+        try { msg = JSON.parse(evt.data); } catch (e) { return; }
+        if (msg.type === 'broadcast' && msg.channel === 'notifications') {
+            const p = msg.payload || {};
+            refreshNotifCount();
+            const dd = document.getElementById('notif-dropdown');
+            if (dd && !dd.classList.contains('hidden')) loadNotifList();
+            const text = p.title ? `${p.title}: ${p.message || ''}` : (p.message || 'New notification');
+            showToast(text, 'info');
+        }
+    });
+
+    // Auto-reconnect so the live channel survives server restarts / dropped links
+    const reconnect = () => {
+        clearTimeout(_liveRetry);
+        _liveRetry = setTimeout(initLiveUpdates, 5000);
+    };
+    _liveSocket.addEventListener('close', reconnect);
+    _liveSocket.addEventListener('error', () => { try { _liveSocket.close(); } catch (e) {} });
+}
+
+/* ── Language switcher (i18n) ─────────────────────────────────────────────── */
+function initLanguageSwitcher() {
+    if (!window.I18N) return;
+    I18N.apply(); // translate the static chrome once the DOM is ready
+    const sel = document.getElementById('lang-select');
+    if (!sel) return;
+    sel.value = I18N.getLang();
+    sel.addEventListener('change', () => I18N.load(sel.value));
+}
 
 /* ── Notifications (live, backed by ServiceNow notification table) ────────── */
 function initNotifications() {
@@ -216,7 +299,10 @@ async function loadView(viewName) {
         case 'performance': await renderEmployeePerformance(); break;
         case 'menu':        await renderDailyMenu(); break;
         case 'feedback':    await renderFeedback(); break;
+        case 'reports':     await renderReports(); break;
+        case 'webhooks':    await renderWebhooks(); break;
     }
+    if (window.I18N) I18N.apply(); // translate any data-i18n inside freshly rendered views
 }
 
 // ── COMPANY OVERVIEW with live charts ──────────────────────────────────────
@@ -233,30 +319,30 @@ async function renderOverview() {
 
     viewContainer.innerHTML = `
         <div class="topbar fade-in">
-            <h2><i class="fa-solid fa-chart-line" style="color:var(--primary);"></i> Company Overview</h2>
+            <h2><i class="fa-solid fa-chart-line" style="color:var(--primary);"></i> <span data-i18n="companyOverview">Company Overview</span></h2>
             <span style="color:var(--text-muted);font-size:0.85rem;"><i class="fa-solid fa-circle" style="color:#10b981;font-size:0.5rem;margin-right:6px;"></i>Live — ServiceNow PDI</span>
         </div>
         <div class="dashboard-grid fade-in">
-            <div class="card stat-card"><div class="stat-icon primary"><i class="fa-solid fa-users"></i></div><div class="stat-details"><h3>${stats.totalEmployees}</h3><p>Total Headcount</p></div></div>
-            <div class="card stat-card"><div class="stat-icon success"><i class="fa-solid fa-user-check"></i></div><div class="stat-details"><h3>${stats.onboardedEmployees}</h3><p>Onboarded</p></div></div>
-            <div class="card stat-card"><div class="stat-icon warning"><i class="fa-solid fa-list-check"></i></div><div class="stat-details"><h3>${stats.pendingTasks}</h3><p>Pending Tasks</p></div></div>
-            <div class="card stat-card"><div class="stat-icon" style="background:rgba(239,68,68,0.1);color:var(--danger);"><i class="fa-solid fa-triangle-exclamation"></i></div><div class="stat-details"><h3>${perf.sla.Breached}</h3><p>SLA Breached</p></div></div>
+            <div class="card stat-card"><div class="stat-icon primary"><i class="fa-solid fa-users"></i></div><div class="stat-details"><h3>${stats.totalEmployees}</h3><p data-i18n="totalHeadcount">Total Headcount</p></div></div>
+            <div class="card stat-card"><div class="stat-icon success"><i class="fa-solid fa-user-check"></i></div><div class="stat-details"><h3>${stats.onboardedEmployees}</h3><p data-i18n="onboarded">Onboarded</p></div></div>
+            <div class="card stat-card"><div class="stat-icon warning"><i class="fa-solid fa-list-check"></i></div><div class="stat-details"><h3>${stats.pendingTasks}</h3><p data-i18n="pendingTasks">Pending Tasks</p></div></div>
+            <div class="card stat-card"><div class="stat-icon" style="background:rgba(239,68,68,0.1);color:var(--danger);"><i class="fa-solid fa-triangle-exclamation"></i></div><div class="stat-details"><h3>${perf.sla.Breached}</h3><p data-i18n="slaBreached">SLA Breached</p></div></div>
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-bottom:24px;" class="fade-in">
             <div class="card" style="padding:24px;">
-                <h3 style="margin-bottom:20px;font-size:1rem;font-weight:600;"><i class="fa-solid fa-users" style="color:var(--primary);margin-right:8px;"></i>Employee Onboarding Status</h3>
+                <h3 style="margin-bottom:20px;font-size:1rem;font-weight:600;"><i class="fa-solid fa-users" style="color:var(--primary);margin-right:8px;"></i><span data-i18n="empOnboardingStatus">Employee Onboarding Status</span></h3>
                 <canvas id="empChart" height="200"></canvas>
             </div>
             <div class="card" style="padding:24px;">
-                <h3 style="margin-bottom:20px;font-size:1rem;font-weight:600;"><i class="fa-solid fa-stopwatch" style="color:var(--primary);margin-right:8px;"></i>SLA Performance</h3>
+                <h3 style="margin-bottom:20px;font-size:1rem;font-weight:600;"><i class="fa-solid fa-stopwatch" style="color:var(--primary);margin-right:8px;"></i><span data-i18n="slaPerformance">SLA Performance</span></h3>
                 <canvas id="slaChart" height="200"></canvas>
             </div>
         </div>
         <div class="card fade-in" style="padding:24px;margin-bottom:24px;">
-            <h3 style="margin-bottom:20px;font-size:1rem;font-weight:600;"><i class="fa-solid fa-chart-bar" style="color:var(--primary);margin-right:8px;"></i>Sprint Task Priority Distribution</h3>
+            <h3 style="margin-bottom:20px;font-size:1rem;font-weight:600;"><i class="fa-solid fa-chart-bar" style="color:var(--primary);margin-right:8px;"></i><span data-i18n="sprintPriorityDist">Sprint Task Priority Distribution</span></h3>
             <canvas id="priorityChart" height="90"></canvas>
         </div>
-        <div class="card fade-in"><h3 style="margin-bottom:12px;">System Status</h3><p style="color:var(--text-muted);">Enterprise Workflow Hub is live and connected to ServiceNow PDI. AI Business Rules are monitoring bottleneck risks in real-time.</p></div>
+        <div class="card fade-in"><h3 style="margin-bottom:12px;" data-i18n="systemStatus">System Status</h3><p style="color:var(--text-muted);">Enterprise Workflow Hub is live and connected to ServiceNow PDI. AI Business Rules are monitoring bottleneck risks in real-time.</p></div>
     `;
 
     try { new Chart(document.getElementById('empChart'), { type:'doughnut', data:{ labels:['Onboarded','Pending'], datasets:[{ data:[stats.onboardedEmployees,pendingEmp], backgroundColor:['#10b981','#f59e0b'], borderWidth:0 }] }, options:{ plugins:{ legend:{ labels:{ color:tc } } }, cutout:'65%' } }); } catch(e) { console.error('Chart error (emp):', e); }
@@ -278,18 +364,18 @@ async function renderHRDashboard() {
 
     _hrState.q = ''; _hrState.sortKey = ''; _hrState.sortDir = 1;
     viewContainer.innerHTML = `
-        <div class="topbar fade-in"><h2><i class="fa-solid fa-users" style="color:var(--primary);"></i> HR Dashboard</h2><button class="btn btn-primary" onclick="showAddEmployeeForm()"><i class="fa-solid fa-user-plus"></i> New Hire</button></div>
+        <div class="topbar fade-in"><h2><i class="fa-solid fa-users" style="color:var(--primary);"></i> <span data-i18n="hrDashboard">HR Dashboard</span></h2><button class="btn btn-primary" onclick="showAddEmployeeForm()"><i class="fa-solid fa-user-plus"></i> <span data-i18n="newHire">New Hire</span></button></div>
         <div id="form-container"></div>
         <div class="toolbar fade-in">
-            <div class="search-box"><i class="fa-solid fa-magnifying-glass"></i><input id="emp-search" class="form-control" placeholder="Quick search…"></div>
+            <div class="search-box"><i class="fa-solid fa-magnifying-glass"></i><input id="emp-search" class="form-control" data-i18n="quickSearch" placeholder="Quick search…"></div>
         </div>
         <div id="emp-filter" class="fade-in"></div>
         <div class="table-container fade-in"><table class="data-table">
             <thead><tr>
-                <th class="sortable" data-key="name">Name</th>
-                <th class="sortable" data-key="department">Department</th>
-                <th class="sortable" data-key="joiningDate">Joining Date</th>
-                <th class="sortable" data-key="status">Status</th>
+                <th class="sortable" data-key="name" data-i18n="name">Name</th>
+                <th class="sortable" data-key="department" data-i18n="department">Department</th>
+                <th class="sortable" data-key="joiningDate" data-i18n="joiningDate">Joining Date</th>
+                <th class="sortable" data-key="status" data-i18n="status">Status</th>
             </tr></thead>
             <tbody id="emp-tbody"></tbody>
         </table></div>`;
@@ -319,7 +405,7 @@ function renderEmpRows() {
     if (!rows.length) { tbody.innerHTML = `<tr><td colspan="4" style="text-align:center;color:var(--text-muted);padding:28px;">No matching employees.</td></tr>`; return; }
     tbody.innerHTML = rows.map(emp => {
         const sc = emp.status === 'Onboarded' ? 'status-onboarded' : 'status-pending';
-        return `<tr><td><div style="display:flex;align-items:center;gap:12px;"><img src="https://ui-avatars.com/api/?name=${encodeURIComponent(emp.name || '')}&background=random&color=fff&size=32" style="border-radius:50%;">${emp.name || ''}</div></td><td>${emp.department || ''}</td><td>${emp.joiningDate || ''}</td><td><span class="status-badge ${sc}">${emp.status || 'Pending'}</span></td></tr>`;
+        return `<tr><td><div style="display:flex;align-items:center;gap:12px;"><img src="https://ui-avatars.com/api/?name=${encodeURIComponent(emp.name || '')}&background=random&color=fff&size=32" style="border-radius:50%;">${emp.name || ''}</div></td><td>${emp.department || ''}</td><td>${emp.joiningDate || ''}</td><td><span class="status-badge ${sc}">${trStatus(emp.status || 'Pending')}</span></td></tr>`;
     }).join('');
 }
 
@@ -328,16 +414,17 @@ function showAddEmployeeForm() {
         <div class="card fade-in" style="margin-bottom:24px;border-left:4px solid var(--success);">
             <h3 style="margin-bottom:20px;">Register New Hire (Triggers Flow Designer)</h3>
             <form id="new-employee-form" style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
-                <div class="form-group"><label>Full Name</label><input type="text" id="emp-name" class="form-control" required></div>
-                <div class="form-group"><label>Email</label><input type="email" id="emp-email" class="form-control" required></div>
-                <div class="form-group"><label>Department</label><select id="emp-dept" class="form-control"><option>IT</option><option>HR</option><option>Security</option><option>Facility</option></select></div>
-                <div class="form-group"><label>Joining Date</label><input type="date" id="emp-date" class="form-control" required></div>
+                <div class="form-group"><label data-i18n="fullName">Full Name</label><input type="text" id="emp-name" class="form-control" required></div>
+                <div class="form-group"><label data-i18n="email">Email</label><input type="email" id="emp-email" class="form-control" required></div>
+                <div class="form-group"><label data-i18n="department">Department</label><select id="emp-dept" class="form-control"><option>IT</option><option>HR</option><option>Security</option><option>Facility</option></select></div>
+                <div class="form-group"><label data-i18n="joiningDate">Joining Date</label><input type="date" id="emp-date" class="form-control" required></div>
                 <div style="grid-column:span 2;display:flex;justify-content:flex-end;gap:12px;">
-                    <button type="button" class="btn btn-outline" onclick="document.getElementById('form-container').innerHTML=''">Cancel</button>
-                    <button type="submit" class="btn btn-success">Save to ServiceNow</button>
+                    <button type="button" class="btn btn-outline" onclick="document.getElementById('form-container').innerHTML=''" data-i18n="cancel">Cancel</button>
+                    <button type="submit" class="btn btn-success" data-i18n="saveToServiceNow">Save to ServiceNow</button>
                 </div>
             </form>
         </div>`;
+    if (window.I18N) I18N.apply();
     document.getElementById('new-employee-form').addEventListener('submit', async (e) => {
         e.preventDefault();
         const btn = e.target.querySelector('.btn-success');
@@ -375,9 +462,9 @@ function sortRows(rows, key, dir) {
 
 // ── Reusable ServiceNow-style condition builder (field / oper / value) ────────
 const FILTER_OPERS = [
-    ['is', 'is'], ['is_not', 'is not'], ['contains', 'contains'],
-    ['not_contains', 'does not contain'], ['starts', 'starts with'],
-    ['ends', 'ends with'], ['empty', 'is empty']
+    ['is', 'is', 'opIs'], ['is_not', 'is not', 'opIsNot'], ['contains', 'contains', 'opContains'],
+    ['not_contains', 'does not contain', 'opNotContains'], ['starts', 'starts with', 'opStarts'],
+    ['ends', 'ends with', 'opEnds'], ['empty', 'is empty', 'opEmpty']
 ];
 
 function attachFilterBuilder(mountId, fields, onChange) {
@@ -386,15 +473,15 @@ function attachFilterBuilder(mountId, fields, onChange) {
 
     const rowHtml = () => `
         <div class="filter-row">
-            <select class="form-control f-field"><option value="">-- choose field --</option>${fields.map(f => `<option value="${f.key}">${f.label}</option>`).join('')}</select>
-            <select class="form-control f-oper"><option value="">-- oper --</option>${FILTER_OPERS.map(o => `<option value="${o[0]}">${o[1]}</option>`).join('')}</select>
-            <input class="form-control f-value" placeholder="-- value --">
+            <select class="form-control f-field"><option value="" data-i18n="chooseField">-- choose field --</option>${fields.map(f => `<option value="${f.key}">${f.label}</option>`).join('')}</select>
+            <select class="form-control f-oper"><option value="" data-i18n="chooseOper">-- oper --</option>${FILTER_OPERS.map(o => `<option value="${o[0]}">${tr(o[2], o[1])}</option>`).join('')}</select>
+            <input class="form-control f-value" data-i18n="valuePlaceholder" placeholder="-- value --">
             <button type="button" class="btn btn-outline f-remove" title="Remove condition"><i class="fa-solid fa-xmark"></i></button>
         </div>`;
 
     mount.innerHTML = `<div class="filter-builder">
             <div class="filter-rows">${rowHtml()}</div>
-            <button type="button" class="btn btn-outline f-add" style="margin-top:12px;"><i class="fa-solid fa-plus"></i> Add condition</button>
+            <button type="button" class="btn btn-outline f-add" style="margin-top:12px;"><i class="fa-solid fa-plus"></i> <span data-i18n="addCondition">Add condition</span></button>
         </div>`;
     const rows = mount.querySelector('.filter-rows');
 
@@ -407,7 +494,7 @@ function attachFilterBuilder(mountId, fields, onChange) {
         if (e.target.classList.contains('f-field') || e.target.classList.contains('f-oper')) onChange();
     });
     mount.addEventListener('click', (e) => {
-        if (e.target.closest('.f-add')) { rows.insertAdjacentHTML('beforeend', rowHtml()); }
+        if (e.target.closest('.f-add')) { rows.insertAdjacentHTML('beforeend', rowHtml()); if (window.I18N) I18N.apply(); }
         else if (e.target.closest('.f-remove')) {
             const r = e.target.closest('.filter-row');
             if (rows.querySelectorAll('.filter-row').length > 1) r.remove();
@@ -455,18 +542,18 @@ async function renderEmployeeTasks() {
 
     _taskState.q = ''; _taskState.status = 'All'; _taskState.sortKey = ''; _taskState.sortDir = 1;
     viewContainer.innerHTML = `
-        <div class="topbar fade-in"><h2><i class="fa-solid fa-list-check" style="color:var(--primary);"></i> Onboarding Tasks</h2></div>
+        <div class="topbar fade-in"><h2><i class="fa-solid fa-list-check" style="color:var(--primary);"></i> <span data-i18n="onboardingTasks">Onboarding Tasks</span></h2></div>
         <div class="toolbar fade-in">
-            <div class="search-box"><i class="fa-solid fa-magnifying-glass"></i><input id="task-search" class="form-control" placeholder="Quick search…"></div>
+            <div class="search-box"><i class="fa-solid fa-magnifying-glass"></i><input id="task-search" class="form-control" data-i18n="quickSearch" placeholder="Quick search…"></div>
         </div>
         <div id="task-filter" class="fade-in"></div>
         <div class="table-container fade-in"><table class="data-table">
             <thead><tr>
-                <th class="sortable" data-key="employeeName">Employee</th>
-                <th class="sortable" data-key="taskType">Task Type</th>
-                <th class="sortable" data-key="assignedTo">Assigned To</th>
-                <th class="sortable" data-key="status">Status</th>
-                <th>Action</th>
+                <th class="sortable" data-key="employeeName" data-i18n="employee">Employee</th>
+                <th class="sortable" data-key="taskType" data-i18n="taskType">Task Type</th>
+                <th class="sortable" data-key="assignedTo" data-i18n="assignedTo">Assigned To</th>
+                <th class="sortable" data-key="status" data-i18n="status">Status</th>
+                <th data-i18n="action">Action</th>
             </tr></thead>
             <tbody id="task-tbody"></tbody>
         </table></div>`;
@@ -496,8 +583,8 @@ function renderTaskRows() {
     if (!rows.length) { tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:28px;">No matching tasks.</td></tr>`; return; }
     tbody.innerHTML = rows.map(t => {
         const sc = t.status === 'Completed' ? 'status-completed' : t.status === 'In Progress' ? 'status-inprogress' : 'status-pending';
-        const action = t.status !== 'Completed' ? `<button class="btn btn-primary" style="padding:6px 12px;font-size:0.85rem;" onclick="completeTask('${t.id}')">Complete</button>` : `<i class="fa-solid fa-check" style="color:var(--success);"></i>`;
-        return `<tr><td>${t.employeeName}</td><td>${t.taskType}</td><td>${t.assignedTo}</td><td><span class="status-badge ${sc}">${t.status || 'Pending'}</span></td><td>${action}</td></tr>`;
+        const action = t.status !== 'Completed' ? `<button class="btn btn-primary" style="padding:6px 12px;font-size:0.85rem;" onclick="completeTask('${t.id}')">${tr('complete', 'Complete')}</button>` : `<i class="fa-solid fa-check" style="color:var(--success);"></i>`;
+        return `<tr><td>${t.employeeName}</td><td>${t.taskType}</td><td>${t.assignedTo}</td><td><span class="status-badge ${sc}">${trStatus(t.status || 'Pending')}</span></td><td>${action}</td></tr>`;
     }).join('');
 }
 
@@ -514,12 +601,12 @@ async function completeTask(id) {
 // ── REPORT ISSUE ────────────────────────────────────────────────────────────
 async function renderReportIssue() {
     viewContainer.innerHTML = `
-        <div class="topbar fade-in"><h2><i class="fa-solid fa-ticket" style="color:var(--primary);"></i> Report Issue</h2></div>
+        <div class="topbar fade-in"><h2><i class="fa-solid fa-ticket" style="color:var(--primary);"></i> <span data-i18n="reportIssue">Report Issue</span></h2></div>
         <div class="card fade-in" style="max-width:600px;margin:0 auto;">
             <form id="issue-form">
-                <div class="form-group"><label>Description</label><textarea id="issue-desc" class="form-control" rows="5" required placeholder="Describe the issue..."></textarea></div>
-                <div class="form-group"><label>Priority</label><select id="issue-priority" class="form-control"><option>High</option><option selected>Medium</option><option>Low</option></select></div>
-                <button type="submit" class="btn btn-primary" style="width:100%;justify-content:center;margin-top:8px;">Submit Ticket to ServiceNow</button>
+                <div class="form-group"><label data-i18n="description">Description</label><textarea id="issue-desc" class="form-control" rows="5" required placeholder="Describe the issue..."></textarea></div>
+                <div class="form-group"><label data-i18n="priority">Priority</label><select id="issue-priority" class="form-control"><option>High</option><option selected>Medium</option><option>Low</option></select></div>
+                <button type="submit" class="btn btn-primary" style="width:100%;justify-content:center;margin-top:8px;" data-i18n="submitTicketSN">Submit Ticket to ServiceNow</button>
             </form>
         </div>`;
     document.getElementById('issue-form').addEventListener('submit', async (e) => {
@@ -547,32 +634,32 @@ async function renderFeedback() {
     try { const r = await apiFetch(`${API_BASE}/feedback`); if (r.ok) { const d = await r.json(); if (Array.isArray(d)) items = d; } } catch (e) {}
 
     let html = `
-        <div class="topbar fade-in"><h2><i class="fa-solid fa-comment-dots" style="color:var(--primary);"></i> Employee Feedback</h2></div>
+        <div class="topbar fade-in"><h2><i class="fa-solid fa-comment-dots" style="color:var(--primary);"></i> <span data-i18n="employeeFeedback">Employee Feedback</span></h2></div>
         <div class="card fade-in" style="max-width:640px;margin:0 auto 24px;">
-            <h3 style="margin-bottom:18px;">Share your feedback</h3>
+            <h3 style="margin-bottom:18px;" data-i18n="shareFeedback">Share your feedback</h3>
             <form id="feedback-form" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
-                <div class="form-group" style="margin-bottom:0;"><label>Category</label>
+                <div class="form-group" style="margin-bottom:0;"><label data-i18n="category">Category</label>
                     <select id="fb-category" class="form-control">${categories.map(c => `<option>${c}</option>`).join('')}</select>
                 </div>
-                <div class="form-group" style="margin-bottom:0;"><label>Rating</label>
+                <div class="form-group" style="margin-bottom:0;"><label data-i18n="rating">Rating</label>
                     <select id="fb-rating" class="form-control">
-                        <option value="5">★★★★★ Excellent</option>
-                        <option value="4">★★★★ Good</option>
-                        <option value="3" selected>★★★ Average</option>
-                        <option value="2">★★ Poor</option>
-                        <option value="1">★ Very Poor</option>
+                        <option value="5" data-i18n="ratingExcellent">★★★★★ Excellent</option>
+                        <option value="4" data-i18n="ratingGood">★★★★ Good</option>
+                        <option value="3" selected data-i18n="ratingAverage">★★★ Average</option>
+                        <option value="2" data-i18n="ratingPoor">★★ Poor</option>
+                        <option value="1" data-i18n="ratingVeryPoor">★ Very Poor</option>
                     </select>
                 </div>
-                <div class="form-group" style="margin-bottom:0;grid-column:1 / -1;"><label>Your feedback</label>
+                <div class="form-group" style="margin-bottom:0;grid-column:1 / -1;"><label data-i18n="yourFeedback">Your feedback</label>
                     <textarea id="fb-comments" class="form-control" rows="3" required placeholder="Tell us about your experience…"></textarea>
                 </div>
                 <div style="grid-column:1 / -1;display:flex;justify-content:flex-end;">
-                    <button type="submit" class="btn btn-primary"><i class="fa-solid fa-paper-plane"></i> Submit Feedback</button>
+                    <button type="submit" class="btn btn-primary"><i class="fa-solid fa-paper-plane"></i> <span data-i18n="submitFeedback">Submit Feedback</span></button>
                 </div>
             </form>
         </div>
         <div class="table-container fade-in"><table class="data-table"><thead><tr>
-            ${isManager ? '<th>Employee</th>' : ''}<th>Category</th><th>Rating</th><th>Feedback</th><th>Submitted</th>
+            ${isManager ? '<th data-i18n="employee">Employee</th>' : ''}<th data-i18n="category">Category</th><th data-i18n="rating">Rating</th><th data-i18n="feedback">Feedback</th><th data-i18n="submitted">Submitted</th>
         </tr></thead><tbody>`;
 
     if (!items.length) {
@@ -621,8 +708,8 @@ async function renderProjectDashboard() {
     let projects = [];
     try { const r = await apiFetch(`${API_BASE}/projects`); if(r.ok) projects = await r.json(); } catch(e){}
     if (!projects.length) projects = [{ sys_id:'demo1', project_name:'Enterprise Workflow Hub', client_name:'Internal', project_manager:'Admin', status:'Development' }];
-    let html = `<div class="topbar fade-in"><h2><i class="fa-solid fa-diagram-project" style="color:var(--primary);"></i> Project Delivery Dashboard</h2><button class="btn btn-primary" onclick="showAddProjectForm()"><i class="fa-solid fa-plus"></i> New Project</button></div><div id="project-form-container"></div><div class="table-container fade-in"><table class="data-table"><thead><tr><th>Project Name</th><th>Client</th><th>Manager</th><th>Status</th></tr></thead><tbody>`;
-    projects.forEach(p => { html += `<tr><td><strong>${p.project_name}</strong></td><td>${p.client_name}</td><td>${p.project_manager}</td><td><span class="status-badge status-inprogress">${p.status}</span></td></tr>`; });
+    let html = `<div class="topbar fade-in"><h2><i class="fa-solid fa-diagram-project" style="color:var(--primary);"></i> <span data-i18n="projectDeliveryDashboard">Project Delivery Dashboard</span></h2><button class="btn btn-primary" onclick="showAddProjectForm()"><i class="fa-solid fa-plus"></i> <span data-i18n="newProject">New Project</span></button></div><div id="project-form-container"></div><div class="table-container fade-in"><table class="data-table"><thead><tr><th data-i18n="projectName">Project Name</th><th data-i18n="client">Client</th><th data-i18n="manager">Manager</th><th data-i18n="status">Status</th></tr></thead><tbody>`;
+    projects.forEach(p => { html += `<tr><td><strong>${p.project_name}</strong></td><td>${p.client_name}</td><td>${p.project_manager}</td><td><span class="status-badge status-inprogress">${trStatus(p.status)}</span></td></tr>`; });
     html += `</tbody></table></div>`;
     viewContainer.innerHTML = html;
 }
@@ -632,17 +719,18 @@ function showAddProjectForm() {
         <div class="card fade-in" style="margin-bottom:24px;border-left:4px solid var(--primary);">
             <h3 style="margin-bottom:20px;">Initiate New Project</h3>
             <form id="new-project-form" style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
-                <div class="form-group"><label>Project Name</label><input type="text" id="proj-name" class="form-control" required></div>
-                <div class="form-group"><label>Client Name</label><input type="text" id="proj-client" class="form-control" required></div>
-                <div class="form-group"><label>Project Manager</label><input type="text" id="proj-manager" class="form-control" required></div>
-                <div class="form-group"><label>Start Date</label><input type="date" id="proj-start" class="form-control" required></div>
-                <div class="form-group"><label>Deadline</label><input type="date" id="proj-deadline" class="form-control" required></div>
+                <div class="form-group"><label data-i18n="projectName">Project Name</label><input type="text" id="proj-name" class="form-control" required></div>
+                <div class="form-group"><label data-i18n="clientName">Client Name</label><input type="text" id="proj-client" class="form-control" required></div>
+                <div class="form-group"><label data-i18n="projectManager">Project Manager</label><input type="text" id="proj-manager" class="form-control" required></div>
+                <div class="form-group"><label data-i18n="startDate">Start Date</label><input type="date" id="proj-start" class="form-control" required></div>
+                <div class="form-group"><label data-i18n="deadline">Deadline</label><input type="date" id="proj-deadline" class="form-control" required></div>
                 <div style="grid-column:span 2;display:flex;justify-content:flex-end;gap:12px;">
-                    <button type="button" class="btn btn-outline" onclick="document.getElementById('project-form-container').innerHTML=''">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Create in ServiceNow</button>
+                    <button type="button" class="btn btn-outline" onclick="document.getElementById('project-form-container').innerHTML=''" data-i18n="cancel">Cancel</button>
+                    <button type="submit" class="btn btn-primary" data-i18n="createInServiceNow">Create in ServiceNow</button>
                 </div>
             </form>
         </div>`;
+    if (window.I18N) I18N.apply();
     document.getElementById('new-project-form').addEventListener('submit', async (e) => {
         e.preventDefault();
         const btn = e.target.querySelector('.btn-primary'); btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Creating...'; btn.disabled = true;
@@ -666,11 +754,11 @@ async function renderSLAIntelligence() {
         { sys_id:'2', task_name:'Node.js APIs', assigned_team:'Development', progress:40, delay_risk:'High', sla_status:'Breached' },
         { sys_id:'3', task_name:'Frontend Dashboard', assigned_team:'UI/UX', progress:10, delay_risk:'Medium', sla_status:'In Progress' }
     ];
-    let html = `<div class="topbar fade-in"><h2><i class="fa-solid fa-stopwatch" style="color:var(--primary);"></i> SLA Intelligence & AI Bottleneck Prediction</h2></div><div class="card fade-in" style="margin-bottom:24px;"><p style="color:var(--text-muted);"><strong>AI Analysis:</strong> Automatically detecting bottlenecks based on Progress % and SLA Deadlines.</p></div><div class="table-container fade-in"><table class="data-table"><thead><tr><th>Task Name</th><th>Team</th><th>Progress</th><th>SLA Status</th><th>AI Delay Risk</th><th>Action</th></tr></thead><tbody>`;
+    let html = `<div class="topbar fade-in"><h2><i class="fa-solid fa-stopwatch" style="color:var(--primary);"></i> <span data-i18n="slaTitle">SLA Intelligence & AI Bottleneck Prediction</span></h2></div><div class="card fade-in" style="margin-bottom:24px;"><p style="color:var(--text-muted);"><strong>AI Analysis:</strong> Automatically detecting bottlenecks based on Progress % and SLA Deadlines.</p></div><div class="table-container fade-in"><table class="data-table"><thead><tr><th data-i18n="taskName">Task Name</th><th data-i18n="team">Team</th><th data-i18n="progress">Progress</th><th data-i18n="slaStatus">SLA Status</th><th data-i18n="aiDelayRisk">AI Delay Risk</th><th data-i18n="action">Action</th></tr></thead><tbody>`;
     tasks.forEach(t => {
         const rc = t.delay_risk === 'High' ? 'status-pending' : t.delay_risk === 'Low' ? 'status-completed' : 'status-inprogress';
         const sc = t.sla_status === 'Breached' ? 'status-pending' : t.sla_status === 'Met' ? 'status-completed' : 'status-inprogress';
-        html += `<tr><td><strong>${t.task_name}</strong></td><td>${t.assigned_team}</td><td><div class="progress-container"><div class="progress-bar" style="width:${t.progress}%"></div></div><span style="font-size:0.8rem;color:var(--text-muted);">${t.progress}% Complete</span></td><td><span class="status-badge ${sc}">${t.sla_status}</span></td><td><span class="status-badge ${rc}">${t.delay_risk} Risk</span></td><td><button class="btn btn-outline" style="padding:6px 12px;font-size:0.8rem;" onclick="updateSprintProgress('${t.sys_id}')">Update</button></td></tr>`;
+        html += `<tr><td><strong>${t.task_name}</strong></td><td>${t.assigned_team}</td><td><div class="progress-container"><div class="progress-bar" style="width:${t.progress}%"></div></div><span style="font-size:0.8rem;color:var(--text-muted);">${t.progress}%</span></td><td><span class="status-badge ${sc}">${trStatus(t.sla_status)}</span></td><td><span class="status-badge ${rc}">${trStatus(t.delay_risk)} ${tr('risk', 'Risk')}</span></td><td><button class="btn btn-outline" style="padding:6px 12px;font-size:0.8rem;" onclick="updateSprintProgress('${t.sys_id}')">${tr('update', 'Update')}</button></td></tr>`;
     });
     html += `</tbody></table></div>`;
     viewContainer.innerHTML = html;
@@ -738,10 +826,10 @@ async function renderDailyMenu() {
         { id:'3', itemName:'Caesar Wrap', category:'Snack', calories:320, available:false },
         { id:'4', itemName:'Fresh Fruit Smoothie', category:'Beverage', calories:210, available:true }
     ];
-    let html = `<div class="topbar fade-in"><h2><i class="fa-solid fa-utensils" style="color:var(--primary);"></i> Daily Menu</h2>${userRole === 'hr' ? '<button class="btn btn-primary" onclick="showAddMenuForm()"><i class="fa-solid fa-plus"></i> Add Item</button>' : ''}</div><div id="menu-form-container"></div><div class="table-container fade-in"><table class="data-table"><thead><tr><th>Item</th><th>Category</th><th>Calories</th><th>Availability</th></tr></thead><tbody>`;
+    let html = `<div class="topbar fade-in"><h2><i class="fa-solid fa-utensils" style="color:var(--primary);"></i> <span data-i18n="dailyMenu">Daily Menu</span></h2>${userRole === 'hr' ? '<button class="btn btn-primary" onclick="showAddMenuForm()"><i class="fa-solid fa-plus"></i> <span data-i18n="addItem">Add Item</span></button>' : ''}</div><div id="menu-form-container"></div><div class="table-container fade-in"><table class="data-table"><thead><tr><th data-i18n="item">Item</th><th data-i18n="category">Category</th><th data-i18n="calories">Calories</th><th data-i18n="availability">Availability</th></tr></thead><tbody>`;
     items.forEach(item => {
         const statusClass = item.available ? 'status-completed' : 'status-pending';
-        const statusText = item.available ? 'Available' : 'Unavailable';
+        const statusText = item.available ? tr('available', 'Available') : tr('unavailable', 'Unavailable');
         html += `<tr><td><strong>${item.itemName}</strong></td><td>${item.category}</td><td>${item.calories} kcal</td><td><span class="status-badge ${statusClass}">${statusText}</span></td></tr>`;
     });
     html += `</tbody></table></div>`;
@@ -754,15 +842,16 @@ function showAddMenuForm() {
             <h3 style="margin-bottom:20px;">Add Menu Item</h3>
             <form id="new-menu-form" style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
                 <div class="form-group"><label>Item Name</label><input type="text" id="menu-name" class="form-control" required></div>
-                <div class="form-group"><label>Category</label><select id="menu-cat" class="form-control"><option>Breakfast</option><option>Lunch</option><option>Snack</option><option>Beverage</option></select></div>
-                <div class="form-group"><label>Calories</label><input type="number" id="menu-cals" class="form-control" required></div>
-                <div class="form-group"><label>Available</label><select id="menu-avail" class="form-control"><option value="true">Yes</option><option value="false">No</option></select></div>
+                <div class="form-group"><label data-i18n="category">Category</label><select id="menu-cat" class="form-control"><option>Breakfast</option><option>Lunch</option><option>Snack</option><option>Beverage</option></select></div>
+                <div class="form-group"><label data-i18n="calories">Calories</label><input type="number" id="menu-cals" class="form-control" required></div>
+                <div class="form-group"><label data-i18n="availability">Available</label><select id="menu-avail" class="form-control"><option value="true" data-i18n="yes">Yes</option><option value="false" data-i18n="no">No</option></select></div>
                 <div style="grid-column:span 2;display:flex;justify-content:flex-end;gap:12px;">
-                    <button type="button" class="btn btn-outline" onclick="document.getElementById('menu-form-container').innerHTML=''">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Save to ServiceNow</button>
+                    <button type="button" class="btn btn-outline" onclick="document.getElementById('menu-form-container').innerHTML=''" data-i18n="cancel">Cancel</button>
+                    <button type="submit" class="btn btn-primary" data-i18n="saveToServiceNow">Save to ServiceNow</button>
                 </div>
             </form>
         </div>`;
+    if (window.I18N) I18N.apply();
     document.getElementById('new-menu-form').addEventListener('submit', async (e) => {
         e.preventDefault();
         const btn = e.target.querySelector('.btn-primary'); btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Saving...'; btn.disabled = true;
@@ -797,4 +886,143 @@ async function sendChatMessage() {
         chatMessages.innerHTML += `<div class="message ai-message fade-in" style="color:var(--danger);">Connection error.</div>`;
     }
     chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+// ── REPORTS & EXPORTS ─────────────────────────────────────────────────────────
+async function renderReports() {
+    const reports = [
+        { path:'/reports/employees/csv',    file:'employees_report.csv',    icon:'fa-users',           title:'Employees',                desc:'Full directory with department, status and joining date.' },
+        { path:'/reports/tasks/csv',        file:'tasks_report.csv',        icon:'fa-list-check',      title:'Onboarding Tasks',         desc:'All tasks with assignee, status, priority and due date.' },
+        { path:'/reports/projects/csv',     file:'projects_report.csv',     icon:'fa-diagram-project', title:'Projects',                 desc:'Portfolio with client, manager, deadline and status.' },
+        { path:'/reports/sprint-tasks/csv', file:'sprint_tasks_report.csv', icon:'fa-stopwatch',       title:'Sprint Tasks',             desc:'Sprint progress, delay risk and SLA status.' },
+        { path:'/reports/dashboard/json',   file:'dashboard_report.json',   icon:'fa-chart-pie',       title:'Executive Summary (JSON)', desc:'Aggregated KPIs across employees, tasks and projects.' }
+    ];
+    viewContainer.innerHTML = `
+        <div class="topbar fade-in"><h2><i class="fa-solid fa-file-export" style="color:var(--primary);"></i> <span data-i18n="reportsExports">Reports &amp; Exports</span></h2></div>
+        <div class="report-grid fade-in">
+        ${reports.map(r => `
+            <div class="card report-card">
+                <div class="report-icon"><i class="fa-solid ${r.icon}"></i></div>
+                <h3 style="margin:0 0 6px;">${r.title}</h3>
+                <p style="color:var(--text-muted);font-size:0.88rem;margin:0 0 18px;flex:1;">${r.desc}</p>
+                <button class="btn btn-primary report-dl" data-path="${r.path}" data-file="${r.file}" style="width:100%;justify-content:center;">
+                    <i class="fa-solid fa-download"></i> <span data-i18n="download">Download</span>
+                </button>
+            </div>`).join('')}
+        </div>`;
+    viewContainer.querySelectorAll('.report-dl').forEach(btn =>
+        btn.addEventListener('click', () => downloadReport(btn, btn.dataset.path, btn.dataset.file))
+    );
+}
+
+async function downloadReport(btn, path, filename) {
+    const original = btn.innerHTML;
+    btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Preparing…';
+    try {
+        // apiFetch attaches the JWT; a plain <a href> would be rejected (401)
+        const res = await apiFetch(`${API_BASE}${path}`);
+        if (!res.ok) throw new Error(`Export failed (${res.status})`);
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = filename;
+        document.body.appendChild(a); a.click(); a.remove();
+        URL.revokeObjectURL(url);
+        showToast('Report downloaded.', 'success');
+    } catch (e) {
+        showToast(e.message || 'Could not generate report.', 'error');
+    } finally {
+        btn.disabled = false; btn.innerHTML = original;
+    }
+}
+
+// ── INTEGRATIONS & WEBHOOKS (HR only) ─────────────────────────────────────────
+const WEBHOOK_EVENTS = ['employee.created', 'employee.updated', 'task.completed', 'project.updated', 'sla.breached', 'feedback.submitted'];
+
+async function renderWebhooks() {
+    let hooks = [];
+    try { const r = await apiFetch(`${API_BASE}/webhooks`); if (r.ok) { const d = await r.json(); if (Array.isArray(d)) hooks = d; } } catch (e) {}
+
+    viewContainer.innerHTML = `
+        <div class="topbar fade-in"><h2><i class="fa-solid fa-plug" style="color:var(--primary);"></i> <span data-i18n="integrationsWebhooks">Integrations &amp; Webhooks</span></h2></div>
+        <div class="card fade-in" style="max-width:760px;margin:0 auto 24px;">
+            <h3 style="margin-bottom:6px;" data-i18n="registerWebhookTitle">Register a webhook</h3>
+            <p style="color:var(--text-muted);font-size:0.88rem;margin-bottom:18px;">External systems (SAP, Workday, Slack…) receive a signed POST when the selected events fire.</p>
+            <form id="wh-form" style="display:grid;gap:16px;">
+                <div class="form-group" style="margin:0;"><label data-i18n="endpointUrl">Endpoint URL</label>
+                    <input id="wh-url" type="url" class="form-control" required placeholder="https://example.com/hooks/workflow-hub">
+                </div>
+                <div class="form-group" style="margin:0;"><label data-i18n="signingSecret">Signing secret (optional)</label>
+                    <input id="wh-secret" class="form-control" placeholder="Used to sign delivery payloads">
+                </div>
+                <div class="form-group" style="margin:0;"><label data-i18n="events">Events</label>
+                    <div class="wh-events">${WEBHOOK_EVENTS.map(ev => `<label class="wh-event"><input type="checkbox" value="${ev}"> <span>${ev}</span></label>`).join('')}</div>
+                </div>
+                <div style="display:flex;justify-content:flex-end;"><button type="submit" class="btn btn-primary"><i class="fa-solid fa-plus"></i> <span data-i18n="registerWebhook">Register Webhook</span></button></div>
+            </form>
+        </div>
+        <div class="table-container fade-in"><table class="data-table"><thead><tr>
+            <th data-i18n="endpoint">Endpoint</th><th data-i18n="events">Events</th><th data-i18n="status">Status</th><th data-i18n="created">Created</th><th data-i18n="actions">Actions</th>
+        </tr></thead><tbody id="wh-tbody"></tbody></table></div>`;
+
+    renderWebhookRows(hooks);
+
+    document.getElementById('wh-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const url = document.getElementById('wh-url').value.trim();
+        const secret = document.getElementById('wh-secret').value.trim();
+        const events = [...document.querySelectorAll('.wh-events input:checked')].map(c => c.value);
+        if (!events.length) { showToast('Select at least one event.', 'error'); return; }
+        const btn = e.target.querySelector('button[type="submit"]');
+        btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Registering…';
+        try {
+            const res = await apiFetch(`${API_BASE}/webhooks/register`, {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ url, events, secret: secret || undefined })
+            });
+            if (!res.ok) { const d = await res.json().catch(() => ({})); throw new Error(d.error || 'Registration failed'); }
+            showToast('Webhook registered.', 'success');
+            renderWebhooks();
+        } catch (err) {
+            showToast(err.message || 'Failed to register webhook.', 'error');
+            btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-plus"></i> Register Webhook';
+        }
+    });
+}
+
+function renderWebhookRows(hooks) {
+    const tb = document.getElementById('wh-tbody');
+    if (!tb) return;
+    if (!hooks.length) {
+        tb.innerHTML = `<tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:28px;">No webhooks registered yet.</td></tr>`;
+        return;
+    }
+    tb.innerHTML = hooks.map(h => `<tr>
+        <td style="word-break:break-all;max-width:260px;">${h.url}</td>
+        <td>${(h.events || []).map(ev => `<span class="status-badge status-inprogress" style="margin:2px;">${ev}</span>`).join('')}</td>
+        <td><span class="status-badge ${h.active ? 'status-completed' : 'status-pending'}">${h.active ? 'Active' : 'Inactive'}</span></td>
+        <td style="white-space:nowrap;">${(h.createdAt || '').slice(0, 10)}</td>
+        <td style="white-space:nowrap;">
+            <button class="btn btn-outline wh-test" data-id="${h.id}" title="Send test payload" style="padding:8px 12px;"><i class="fa-solid fa-paper-plane"></i></button>
+            <button class="btn btn-outline wh-del" data-id="${h.id}" title="Delete" style="padding:8px 12px;color:var(--danger);"><i class="fa-solid fa-trash"></i></button>
+        </td></tr>`).join('');
+    tb.querySelectorAll('.wh-test').forEach(b => b.addEventListener('click', () => testWebhook(b.dataset.id)));
+    tb.querySelectorAll('.wh-del').forEach(b => b.addEventListener('click', () => deleteWebhook(b.dataset.id)));
+}
+
+async function testWebhook(id) {
+    try {
+        const res = await apiFetch(`${API_BASE}/webhooks/test/${id}`, { method: 'POST' });
+        if (!res.ok) throw new Error();
+        showToast('Test payload generated — check server logs.', 'success');
+    } catch (e) { showToast('Test failed.', 'error'); }
+}
+
+async function deleteWebhook(id) {
+    try {
+        const res = await apiFetch(`${API_BASE}/webhooks/${id}`, { method: 'DELETE' });
+        if (!res.ok) throw new Error();
+        showToast('Webhook deleted.', 'success');
+        renderWebhooks();
+    } catch (e) { showToast('Delete failed.', 'error'); }
 }
