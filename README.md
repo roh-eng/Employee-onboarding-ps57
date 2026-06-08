@@ -294,6 +294,8 @@ The system uses **JWT (JSON Web Tokens)** issued after validating credentials ag
 | `x_..._project_sprint_task` | Sprint tasks with progress & SLA |
 | `x_..._issue` | Issue/ticket tracking |
 | `x_..._daily_menu` | Meal catalog |
+| `x_..._employee_feedback` | Employee feedback tracking |
+| `x_..._notification` | System notifications |
 
 ### Automation
 
@@ -305,7 +307,9 @@ The system uses **JWT (JSON Web Tokens)** issued after validating credentials ag
 
 ```bash
 node servicenow/create_table.js   # Creates Daily Menu table
-node servicenow/create_acls.js    # Creates ACLs for Daily Menu
+node servicenow/fix_all_tables.js # Verifies and creates missing tables (e.g. notifications)
+node servicenow/patch_notification_table.js # Applies correct dictionary columns
+node servicenow/create_acls.js    # Creates ACLs for tables
 ```
 
 ---

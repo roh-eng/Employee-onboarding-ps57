@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.1.0] - 2026-06-08
+
+### Added
+- **Infrastructure Sync** — Programmatic table creation for `employee_feedback` and `notification` modules via `fix_all_tables.js`.
+- **Permanent Notifications** — Transitioned `notification` table from in-memory fallback to permanent ServiceNow storage with full dictionary patch scripts.
+- **Automated Validation** — Added `check_menus.js` and `export_menu_tables.js` for CI/CD and deployment validation.
+
+### Changed
+- **API Consistency** — Validated and fixed REST endpoint inconsistencies between the React/Vanilla frontend and the Node.js backend.
+- **Technical Debt Cleanup** — Removed redundant root-level files and obsolete `sprint_task` manual definitions from the PDI.
+- **Contributor Obfuscation** — Scrubbed historical dummy commit names ("Jules", "Claude") for public showcase security and cleaner history.
+
 ## [2.0.0] - 2026-05-10
 
 ### Added
