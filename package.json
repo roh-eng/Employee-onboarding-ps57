@@ -1,6 +1,6 @@
 {
   "name": "enterpriseworkflowhub",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "Enterprise Workflow & Delivery Intelligence Hub — Node.js + ServiceNow PDI Integration",
   "main": "backend/server.js",
   "scripts": {
@@ -16,8 +16,8 @@
     "sla",
     "ai"
   ],
-  "author": "Enterprise Workflow Team",
-  "license": "ISC",
+  "author": "Devadula Rohit (roh-eng)",
+  "license": "MIT",
   "engines": {
     "node": ">=18.0.0",
     "npm": ">=9.0.0"
