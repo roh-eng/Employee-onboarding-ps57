@@ -200,6 +200,15 @@ The application will be available at [http://localhost:3000](http://localhost:30
 | `SERVICENOW_SCOPE` | Yes | Scoped app prefix |
 | `GEMINI_API_KEY` | No | Google AI Studio API key |
 | `JWT_SECRET` | Yes | Strong secret for token signing |
+| `JWT_EXPIRES_IN` | No | Token lifetime (default: `8h`) |
+| `SMTP_HOST` / `SMTP_PORT` / `SMTP_SECURE` | No | SMTP server for real email alerts (else falls back to in-app) |
+| `SMTP_USER` / `SMTP_PASS` / `SMTP_FROM` | No | SMTP credentials and From address (Gmail: use an App Password) |
+| `HRMS_WEBHOOK_SECRET` | No | Shared secret to verify HMAC signatures on inbound HRMS webhooks |
+
+> **Going live with optional integrations**
+> - **Email:** set the `SMTP_*` vars; `/api/notifications/email-alert` then sends real mail via nodemailer.
+> - **Outbound webhooks:** register a URL in the *Integrations* view; the app fires HMAC-signed `POST`s on events (employee/task/project/feedback changes). Use *Test* to send a signed sample.
+> - **Inbound HRMS:** external systems `POST /api/webhooks/incoming/hrms`; set `HRMS_WEBHOOK_SECRET` to enforce signature verification before records are forwarded to ServiceNow.
 
 ---
 
