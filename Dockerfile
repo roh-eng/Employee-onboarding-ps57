@@ -8,7 +8,7 @@ WORKDIR /app
 
 # Install dependencies first for layer caching
 COPY package*.json ./
-RUN npm ci --only=production
+RUN npm ci --omit=dev
 
 # Copy application code
 COPY backend/ ./backend/
@@ -16,14 +16,15 @@ COPY frontend/ ./frontend/
 COPY docs/ ./docs/
 COPY servicenow/ ./servicenow/
 COPY tests/ ./tests/
-COPY logs/ ./logs/
 COPY server.js ./
 COPY .env.example ./
 COPY README.md ./
 COPY CHANGELOG.md ./
 
-# Create logs directory if not present
-RUN mkdir -p logs
+# Create the runtime logs directory and make the app writable by the non-root
+# "node" user. logs/ is gitignored, so it is intentionally NOT COPYed from the
+# build context (it would not exist on a fresh checkout and would break the build).
+RUN mkdir -p logs && chown -R node:node /app
 
 # Expose HTTP + WebSocket port
 EXPOSE 3000

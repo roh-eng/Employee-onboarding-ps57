@@ -1,0 +1,17 @@
+# Keep secrets, local deps, and VCS metadata out of the image / build context
+.env
+.env.*
+!.env.example
+node_modules
+npm-debug.log
+logs
+*.log
+.git
+.gitignore
+.github
+coverage
+.vscode
+.idea
+*.md
+!README.md
+!CHANGELOG.md
