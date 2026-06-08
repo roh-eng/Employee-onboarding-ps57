@@ -68,7 +68,7 @@ function showToast(message, type = 'success') {
 function requireAuth() {
     const token = localStorage.getItem('authToken');
     if (!token) {
-        window.location.href = '/frontend/login.html';
+        window.location.href = '/login.html';
         return false;
     }
     return true;
@@ -79,7 +79,7 @@ function logout() {
     localStorage.removeItem('authToken');
     localStorage.removeItem('userRole');
     localStorage.removeItem('userName');
-    window.location.href = '/frontend/login.html';
+    window.location.href = '/login.html';
 }
 
 /* ── Init ────────────────────────────────────────────────────────────────── */

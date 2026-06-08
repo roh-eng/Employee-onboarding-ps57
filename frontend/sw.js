@@ -3,10 +3,10 @@
  * Provides offline caching for static assets and fallback responses.
  */
 
-const CACHE_NAME = 'workflow-hub-v2';
+const CACHE_NAME = 'workflow-hub-v3';
 const STATIC_ASSETS = [
     '/',
-    '/frontend/login.html',
+    '/login.html',
     '/css/style.css',
     '/js/app.js',
     '/js/i18n.js',
