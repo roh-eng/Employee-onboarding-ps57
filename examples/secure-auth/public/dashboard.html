@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Dashboard · Secure Auth Reference</title>
+    <!--
+      A PROTECTED page. It demonstrates the second half of the flow:
+        1) read the JWT saved at login,
+        2) if missing -> bounce back to the login page (client-side guard),
+        3) call the protected /api/tasks endpoint WITH the JWT,
+        4) render the data (or handle 401 by logging out).
+    -->
+    <style>
+        :root {
+            --void: #0a0910; --mist: #eceaf4; --dim: #9b97ad;
+            --line: rgba(255,255,255,0.10);
+            --grad: linear-gradient(135deg, #2dd4bf, #0ea5e9 55%, #2563eb);
+            --sans: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+            --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { min-height: 100vh; font-family: var(--sans); color: var(--mist);
+            background: radial-gradient(50vw 50vw at 90% 0%, rgba(37,99,235,0.16), transparent 60%), var(--void); }
+        header { display: flex; align-items: center; justify-content: space-between;
+            padding: 20px 28px; border-bottom: 1px solid var(--line); }
+        header .who { font-family: var(--mono); font-size: 0.72rem; letter-spacing: 0.08em; color: var(--dim); }
+        header button { font: inherit; font-size: 0.85rem; cursor: pointer; color: var(--mist);
+            background: transparent; border: 1px solid var(--line); border-radius: 99px; padding: 8px 16px; }
+        main { max-width: 820px; margin: 0 auto; padding: 40px 24px; }
+        h1 { font-size: 1.6rem; font-weight: 600; letter-spacing: -0.02em; }
+        .sub { color: var(--dim); margin-top: 6px; font-size: 0.92rem; }
+        .task { display: flex; justify-content: space-between; align-items: center; gap: 16px;
+            padding: 16px 18px; margin-top: 12px; background: rgba(255,255,255,0.04);
+            border: 1px solid var(--line); border-radius: 12px; }
+        .task .title { font-weight: 500; }
+        .badge { font-family: var(--mono); font-size: 0.66rem; letter-spacing: 0.08em; text-transform: uppercase;
+            padding: 5px 10px; border-radius: 99px; background: rgba(45,212,191,0.14); color: #5eead4; }
+        .muted { color: var(--dim); margin-top: 18px; }
+        .state { margin-top: 24px; }
+    </style>
+</head>
+<body>
+    <header>
+        <span class="who" id="who">…</span>
+        <button id="logout">Sign out</button>
+    </header>
+    <main>
+        <h1>Your onboarding tasks</h1>
+        <p class="sub">Fetched live from the protected <code>/api/tasks</code> endpoint using your session token.</p>
+        <div class="state" id="state">Loading…</div>
+    </main>
+
+    <script>
+        const stateEl = document.getElementById('state');
+
+        // ── Read the session token saved by the login page ──────────────────
+        const token = localStorage.getItem('authToken');
+        const user = JSON.parse(localStorage.getItem('user') || 'null');
+
+        // ── Client-side guard: no token -> back to login ────────────────────
+        if (!token) {
+            window.location.href = 'login.html';
+        } else {
+            document.getElementById('who').textContent =
+                user ? `${user.name} · ${user.role}` : 'Signed in';
+        }
+
+        // ── Logout: clear the token and return to login ─────────────────────
+        document.getElementById('logout').addEventListener('click', () => {
+            localStorage.removeItem('authToken');
+            localStorage.removeItem('user');
+            window.location.href = 'login.html';
+        });
+
+        // ── Fetch protected data, sending the JWT in the Authorization header ─
+        async function loadTasks() {
+            try {
+                const res = await fetch('/api/tasks', {
+                    headers: { Authorization: `Bearer ${token}` },
+                });
+
+                // A 401 means the token is missing/expired/invalid -> re-login.
+                if (res.status === 401) {
+                    localStorage.removeItem('authToken');
+                    window.location.href = 'login.html';
+                    return;
+                }
+
+                const data = await res.json();
+                if (!data.success) throw new Error(data.error || 'Failed to load tasks.');
+
+                if (data.tasks.length === 0) {
+                    stateEl.innerHTML = '<p class="muted">No tasks assigned. 🎉</p>';
+                    return;
+                }
+
+                stateEl.innerHTML = data.tasks.map((t) => `
+                    <div class="task">
+                        <span class="title">${escapeHtml(t.title)}</span>
+                        <span class="badge">${escapeHtml(t.status)}</span>
+                    </div>`).join('');
+            } catch (err) {
+                stateEl.innerHTML = `<p class="muted">${escapeHtml(err.message)}</p>`;
+            }
+        }
+
+        // Minimal HTML-escaping so server data can't inject markup (defense in depth).
+        function escapeHtml(s) {
+            return String(s).replace(/[&<>"']/g, (c) =>
+                ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        }
+
+        if (token) loadTasks();
+    </script>
+</body>
+</html>

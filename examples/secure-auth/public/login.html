@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sign in · Secure Auth Reference</title>
+    <!--
+      Vanilla HTML/JS login form (no framework). Styled to match the
+      project's dark "ocean" theme. The only job of this page is:
+        1) collect username + password,
+        2) POST them to /api/auth/login,
+        3) store the returned JWT,
+        4) redirect to the protected dashboard.
+    -->
+    <style>
+        :root {
+            --void: #0a0910; --mist: #eceaf4; --dim: #9b97ad; --faint: #635f75;
+            --line: rgba(255,255,255,0.10);
+            --grad: linear-gradient(135deg, #2dd4bf, #0ea5e9 55%, #2563eb);
+            --sans: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+            --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            min-height: 100vh; display: grid; place-items: center; padding: 24px;
+            font-family: var(--sans); color: var(--mist);
+            background:
+                radial-gradient(40vw 40vw at 12% 8%, rgba(45,212,191,0.16), transparent 60%),
+                radial-gradient(40vw 40vw at 88% 92%, rgba(37,99,235,0.18), transparent 60%),
+                var(--void);
+        }
+        .card {
+            width: 100%; max-width: 400px; padding: 36px;
+            background: rgba(255,255,255,0.045); border: 1px solid var(--line);
+            border-radius: 20px; backdrop-filter: blur(20px);
+            box-shadow: 0 40px 100px -50px rgba(0,0,0,0.9);
+        }
+        .kicker { font-family: var(--mono); font-size: 0.66rem; letter-spacing: 0.28em;
+            text-transform: uppercase; color: #2dd4bf; margin-bottom: 12px; }
+        h1 { font-size: 1.7rem; font-weight: 600; letter-spacing: -0.02em; }
+        .lede { color: var(--dim); font-size: 0.9rem; margin-top: 10px; line-height: 1.5; }
+        form { margin-top: 26px; }
+        label { display: block; font-family: var(--mono); font-size: 0.64rem; letter-spacing: 0.14em;
+            text-transform: uppercase; color: var(--dim); margin-bottom: 7px; }
+        input {
+            width: 100%; padding: 12px 14px; margin-bottom: 16px; font: inherit; font-size: 0.95rem;
+            color: var(--mist); background: rgba(0,0,0,0.28); border: 1px solid var(--line);
+            border-radius: 10px; outline: none; transition: border-color .15s, box-shadow .15s;
+        }
+        input::placeholder { color: var(--faint); }
+        input:focus { border-color: #2dd4bf; box-shadow: 0 0 0 3px rgba(45,212,191,0.16); }
+        button {
+            width: 100%; padding: 13px; cursor: pointer; font: inherit; font-weight: 600;
+            color: #04161c; background: var(--grad); border: none; border-radius: 10px;
+            transition: filter .15s, transform .12s;
+        }
+        button:hover:not(:disabled) { filter: brightness(1.06); transform: translateY(-1px); }
+        button:disabled { opacity: 0.7; cursor: default; }
+        .error {
+            display: none; margin-top: 14px; padding: 10px 12px; font-size: 0.85rem;
+            color: #fca5a5; background: rgba(248,113,113,0.10);
+            border: 1px solid rgba(248,113,113,0.28); border-radius: 9px;
+        }
+    </style>
+</head>
+<body>
+    <main class="card">
+        <p class="kicker">Secure access</p>
+        <h1>Welcome back.</h1>
+        <p class="lede">Sign in with your ServiceNow account. Credentials are verified
+            server-side; your browser only ever holds a short-lived session token.</p>
+
+        <form id="login-form" novalidate>
+            <label for="username">Username</label>
+            <input id="username" type="text" autocomplete="username" placeholder="e.g. jdoe" required autofocus />
+
+            <label for="password">Password</label>
+            <input id="password" type="password" autocomplete="current-password" placeholder="••••••••" required />
+
+            <button id="submit" type="submit">Sign in</button>
+            <div id="error" class="error" role="alert"></div>
+        </form>
+    </main>
+
+    <script>
+        // Where to send the user after a successful login.
+        const REDIRECT_TO = 'dashboard.html';
+
+        const form = document.getElementById('login-form');
+        const errorBox = document.getElementById('error');
+        const button = document.getElementById('submit');
+
+        form.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            errorBox.style.display = 'none';
+            button.disabled = true;
+            button.textContent = 'Signing in…';
+
+            try {
+                // 1) Send credentials to the backend over HTTPS (in production).
+                const res = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        username: document.getElementById('username').value,
+                        password: document.getElementById('password').value,
+                    }),
+                });
+
+                const data = await res.json();
+
+                // 2) On failure, show a generic message (server already keeps it generic).
+                if (!res.ok || !data.success) {
+                    throw new Error(data.error || 'Sign in failed.');
+                }
+
+                // 3) Store the JWT. NOTE: localStorage is simple but readable by any
+                //    JS on the page (XSS risk). For higher security, prefer an
+                //    httpOnly, Secure, SameSite cookie set by the server — see README.
+                localStorage.setItem('authToken', data.token);
+                localStorage.setItem('user', JSON.stringify(data.user));
+
+                // 4) Go to the protected page.
+                window.location.href = REDIRECT_TO;
+            } catch (err) {
+                errorBox.textContent = err.message;
+                errorBox.style.display = 'block';
+                button.disabled = false;
+                button.textContent = 'Sign in';
+            }
+        });
+    </script>
+</body>
+</html>
