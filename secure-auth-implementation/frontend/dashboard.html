@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Dashboard · Employee Onboarding</title>
+    <!--
+      ════════════════════════════════════════════════════════════════════
+      PROTECTED DASHBOARD  (the second half of the auth flow)
+      ────────────────────────────────────────────────────────────────────
+      Responsibilities:
+        1) Read the JWT saved by login.html (localStorage).
+        2) Guard: if there is no token -> redirect to login.html.
+        3) Show the signed-in user's info (name + email).
+        4) Fetch GET /api/tasks WITH the JWT in the Authorization header.
+        5) Show "Loading tasks…" while fetching.
+        6) Render the tasks in a table (with empty + error states).
+        7) If the token is expired/invalid (HTTP 401) -> redirect to login.
+        8) "Logout" clears the token and returns to login.
+      The browser sends ONLY the JWT — never ServiceNow credentials.
+      Vanilla HTML/CSS/JS. No framework.
+      ════════════════════════════════════════════════════════════════════
+    -->
+    <style>
+        :root {
+            --void: #0a0910; --mist: #eceaf4; --dim: #9b97ad; --faint: #635f75;
+            --line: rgba(255,255,255,0.10);
+            --grad: linear-gradient(135deg, #2dd4bf, #0ea5e9 55%, #2563eb);
+            --sans: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+            --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            min-height: 100vh; font-family: var(--sans); color: var(--mist);
+            background: radial-gradient(55vw 55vw at 92% -5%, rgba(37,99,235,0.16), transparent 60%),
+                        radial-gradient(40vw 40vw at 0% 100%, rgba(45,212,191,0.12), transparent 60%),
+                        var(--void);
+        }
+
+        /* ── Top bar: identity + logout ───────────────────────────────── */
+        header {
+            display: flex; align-items: center; justify-content: space-between; gap: 16px;
+            padding: 18px 28px; border-bottom: 1px solid var(--line);
+            background: rgba(255,255,255,0.02); backdrop-filter: blur(12px);
+        }
+        .identity { display: flex; align-items: center; gap: 12px; min-width: 0; }
+        .avatar {
+            width: 40px; height: 40px; border-radius: 11px; flex: none;
+            display: grid; place-items: center; font-weight: 600; color: #04161c;
+            background: var(--grad);
+        }
+        .identity .meta { min-width: 0; }
+        .identity .name { font-weight: 600; font-size: 0.95rem; line-height: 1.2; }
+        .identity .email { font-size: 0.8rem; color: var(--dim); line-height: 1.2;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .role-pill { font-family: var(--mono); font-size: 0.6rem; letter-spacing: 0.12em; text-transform: uppercase;
+            color: #5eead4; background: rgba(45,212,191,0.14); padding: 4px 9px; border-radius: 99px; }
+        header button {
+            font: inherit; font-size: 0.85rem; font-weight: 500; cursor: pointer; color: var(--mist);
+            background: transparent; border: 1px solid var(--line); border-radius: 99px; padding: 9px 18px;
+            transition: border-color .15s, background .15s;
+        }
+        header button:hover { border-color: #f87171; background: rgba(248,113,113,0.08); color: #fca5a5; }
+
+        /* ── Content ───────────────────────────────────────────────────── */
+        main { max-width: 920px; margin: 0 auto; padding: 40px 24px; }
+        h1 { font-size: 1.7rem; font-weight: 600; letter-spacing: -0.02em; }
+        .sub { color: var(--dim); margin-top: 6px; font-size: 0.92rem; }
+        .sub code { font-family: var(--mono); font-size: 0.85em; color: #5eead4; }
+
+        /* ── Tasks table ───────────────────────────────────────────────── */
+        .table-wrap { margin-top: 26px; border: 1px solid var(--line); border-radius: 14px; overflow: hidden;
+            background: rgba(255,255,255,0.025); backdrop-filter: blur(12px); }
+        table { width: 100%; border-collapse: collapse; }
+        thead th {
+            text-align: left; font-family: var(--mono); font-size: 0.64rem; font-weight: 500;
+            letter-spacing: 0.14em; text-transform: uppercase; color: var(--dim);
+            padding: 14px 18px; border-bottom: 1px solid var(--line);
+        }
+        tbody td { padding: 15px 18px; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 0.92rem; }
+        tbody tr:last-child td { border-bottom: none; }
+        tbody tr:hover { background: rgba(255,255,255,0.025); }
+        .badge { font-family: var(--mono); font-size: 0.64rem; letter-spacing: 0.06em; text-transform: uppercase;
+            padding: 5px 10px; border-radius: 99px; white-space: nowrap;
+            background: rgba(255,255,255,0.07); color: var(--dim); }
+        .badge.done { background: rgba(52,211,153,0.15); color: #5eead4; }
+        .badge.progress { background: rgba(14,165,233,0.15); color: #7dd3fc; }
+        .badge.pending { background: rgba(251,191,36,0.15); color: #fcd34d; }
+        .muted { color: var(--dim); }
+        .state { padding: 40px 18px; text-align: center; color: var(--dim); }
+        .spinner { display: inline-block; width: 16px; height: 16px; margin-right: 8px; vertical-align: -2px;
+            border: 2px solid rgba(255,255,255,0.2); border-top-color: #2dd4bf; border-radius: 50%;
+            animation: spin .7s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+    <!-- Identity + logout. Filled in by JS once we have the stored user. -->
+    <header>
+        <div class="identity">
+            <div class="avatar" id="avatar">·</div>
+            <div class="meta">
+                <div class="name" id="user-name">…</div>
+                <div class="email" id="user-email"></div>
+            </div>
+            <span class="role-pill" id="user-role" style="display:none;"></span>
+        </div>
+        <button id="logout" type="button">Sign out</button>
+    </header>
+
+    <main>
+        <h1>Your onboarding tasks</h1>
+        <p class="sub">Live from the protected <code>GET /api/tasks</code> endpoint, authorized with your session token.</p>
+
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width:55%;">Task</th>
+                        <th>Status</th>
+                        <th>Due date</th>
+                    </tr>
+                </thead>
+                <!-- Rows are injected here. Starts in the loading state. -->
+                <tbody id="task-rows">
+                    <tr><td colspan="3" class="state"><span class="spinner"></span>Loading tasks…</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </main>
+
+    <script>
+        // ════════════════════════════════════════════════════════════════
+        // 1) READ THE SESSION saved by login.html
+        // ════════════════════════════════════════════════════════════════
+        const token = localStorage.getItem('authToken');
+        const user = JSON.parse(localStorage.getItem('user') || 'null');
+
+        const rowsEl = document.getElementById('task-rows');
+
+        // ════════════════════════════════════════════════════════════════
+        // 2) GUARD: no token -> straight back to the login page
+        // ════════════════════════════════════════════════════════════════
+        if (!token) {
+            window.location.replace('login.html');
+        }
+
+        // ════════════════════════════════════════════════════════════════
+        // 3) DISPLAY USER INFO (name + email)
+        // ════════════════════════════════════════════════════════════════
+        if (user) {
+            document.getElementById('user-name').textContent = user.name || 'Signed in';
+            document.getElementById('user-email').textContent = user.email || '';
+            document.getElementById('avatar').textContent = initials(user.name);
+            if (user.role) {
+                const rolePill = document.getElementById('user-role');
+                rolePill.textContent = user.role;
+                rolePill.style.display = 'inline-block';
+            }
+        }
+
+        // ════════════════════════════════════════════════════════════════
+        // 4) LOGOUT: clear the token and return to login
+        // ════════════════════════════════════════════════════════════════
+        document.getElementById('logout').addEventListener('click', () => {
+            localStorage.removeItem('authToken');
+            localStorage.removeItem('user');
+            window.location.replace('login.html');
+        });
+
+        // ════════════════════════════════════════════════════════════════
+        // 5) FETCH PROTECTED TASKS (JWT in the Authorization header)
+        // ════════════════════════════════════════════════════════════════
+        async function loadTasks() {
+            try {
+                const res = await fetch('/api/tasks', {
+                    headers: { Authorization: 'Bearer ' + token },
+                });
+
+                // 7) Token expired/invalid -> the API answers 401 -> re-login.
+                if (res.status === 401) {
+                    handleExpiredSession();
+                    return;
+                }
+
+                const data = await res.json();
+                if (!res.ok || !data.success) {
+                    throw new Error(data.error || 'Failed to load tasks.');
+                }
+
+                renderTasks(data.tasks || []);
+            } catch (err) {
+                // Network / server / parsing errors -> show a friendly message.
+                rowsEl.innerHTML =
+                    `<tr><td colspan="3" class="state">${escapeHtml(err.message)}</td></tr>`;
+            }
+        }
+
+        // ════════════════════════════════════════════════════════════════
+        // 6) RENDER tasks into the table (with an empty state)
+        // ════════════════════════════════════════════════════════════════
+        function renderTasks(tasks) {
+            if (tasks.length === 0) {
+                rowsEl.innerHTML =
+                    '<tr><td colspan="3" class="state">No onboarding tasks assigned. 🎉</td></tr>';
+                return;
+            }
+            rowsEl.innerHTML = tasks.map((t) => `
+                <tr>
+                    <td>${escapeHtml(t.title)}</td>
+                    <td><span class="badge ${statusClass(t.status)}">${escapeHtml(t.status)}</span></td>
+                    <td class="muted">${escapeHtml(t.dueDate || '—')}</td>
+                </tr>`).join('');
+        }
+
+        // ── Helpers ──────────────────────────────────────────────────────
+        function handleExpiredSession() {
+            localStorage.removeItem('authToken');
+            localStorage.removeItem('user');
+            window.location.replace('login.html');
+        }
+
+        function statusClass(status) {
+            const s = String(status).toLowerCase();
+            if (s.includes('complete') || s.includes('done') || s.includes('closed')) return 'done';
+            if (s.includes('progress') || s.includes('open') || s.includes('work')) return 'progress';
+            if (s.includes('pending') || s.includes('new') || s.includes('await')) return 'pending';
+            return '';
+        }
+
+        function initials(name) {
+            return String(name || '?').trim().split(/\s+/).map((p) => p[0]).filter(Boolean)
+                .slice(0, 2).join('').toUpperCase() || '?';
+        }
+
+        // Escape server-provided text so it can't inject markup (defense in depth vs XSS).
+        function escapeHtml(s) {
+            return String(s).replace(/[&<>"']/g, (c) =>
+                ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        }
+
+        // Kick off the fetch (only if we actually have a token).
+        if (token) loadTasks();
+    </script>
+</body>
+</html>
