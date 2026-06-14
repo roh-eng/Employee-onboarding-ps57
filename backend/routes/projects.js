@@ -9,7 +9,8 @@ const { fireEvent } = require('./webhooks');
 const router = express.Router();
 const TABLE = `${config.snowScope}_project`;
 
-router.get('/', verifyToken, async (req, res, next) => {
+// HR/Manager only — full project portfolio (employees get a read-only demo view).
+router.get('/', verifyToken, requireRole('hr', 'manager'), async (req, res, next) => {
     try {
         const response = await snowClient.get(`/${TABLE}`);
         res.json(response.data.result || []);

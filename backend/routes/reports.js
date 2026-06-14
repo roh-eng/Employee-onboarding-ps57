@@ -110,7 +110,7 @@ router.get('/sprint-tasks/csv', verifyToken, requireRole('hr', 'manager'), async
 });
 
 /* ── GET /reports/dashboard/json ────────────────────────────────────────── */
-router.get('/dashboard/json', verifyToken, async (req, res, next) => {
+router.get('/dashboard/json', verifyToken, requireRole('hr', 'manager'), async (req, res, next) => {
     try {
         const [empRes, taskRes, projRes, sprintRes] = await Promise.all([
             snowClient.get(`/${config.snowScope}_employee`),

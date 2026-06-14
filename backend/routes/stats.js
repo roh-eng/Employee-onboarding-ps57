@@ -1,11 +1,12 @@
 const express = require('express');
 const snowClient = require('../services/snowClient');
 const config = require('../config');
-const { verifyToken } = require('../middleware/auth');
+const { verifyToken, requireRole } = require('../middleware/auth');
 
 const router = express.Router();
 
-router.get('/', verifyToken, async (req, res, next) => {
+// Company-wide aggregates — HR/Manager only (employees see a personal dashboard instead).
+router.get('/', verifyToken, requireRole('hr', 'manager'), async (req, res, next) => {
     try {
         const [empRes, taskRes] = await Promise.all([
             snowClient.get(`/${config.snowScope}_employee`),
@@ -15,16 +16,19 @@ router.get('/', verifyToken, async (req, res, next) => {
         const employees = empRes.data.result || [];
         const tasks = taskRes.data.result || [];
 
+        // ServiceNow stores these choice values lowercase (onboarded/pending/completed),
+        // so compare case-insensitively or the counts come back as 0.
+        const norm = v => String(v == null ? '' : (v.value ?? v.display_value ?? v)).toLowerCase();
         res.json({
             totalEmployees: employees.length,
-            onboardedEmployees: employees.filter(e => e.status === 'Onboarded').length,
-            pendingTasks: tasks.filter(t => t.status === 'Pending' || t.status === 'In Progress').length,
+            onboardedEmployees: employees.filter(e => norm(e.status) === 'onboarded').length,
+            pendingTasks: tasks.filter(t => { const s = norm(t.status); return s && s !== 'completed' && s !== 'complete'; }).length,
             activeIssues: 0
         });
     } catch (err) { next(err); }
 });
 
-router.get('/employee', verifyToken, async (req, res, next) => {
+router.get('/employee', verifyToken, requireRole('hr', 'manager'), async (req, res, next) => {
     try {
         const response = await snowClient.get(`/${config.snowScope}_project_sprint_task?sysparm_display_value=all`);
         const tasks = response.data.result || [];

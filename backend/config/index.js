@@ -21,6 +21,12 @@ module.exports = {
     snowUser: process.env.SERVICENOW_USERNAME,
     snowPass: process.env.SERVICENOW_PASSWORD,
     snowScope: process.env.SERVICENOW_SCOPE,
+    // Base URL used to build the employee "set password" onboarding link.
+    appBaseUrl: process.env.APP_BASE_URL || 'http://localhost:3000',
+    // Optional: path to a ServiceNow Scripted REST endpoint that validates a user's
+    // credentials and returns their identity + roles. When set, it lets users WITHOUT
+    // ServiceNow roles (e.g. freshly provisioned employees) log in. Unset = legacy flow.
+    snowValidatePath: process.env.SERVICENOW_VALIDATE_PATH || '',
     geminiKey: process.env.GEMINI_API_KEY,
     jwtSecret: jwtSecret || 'dev-only-insecure-jwt-secret-do-not-use-in-production',
     jwtExpiresIn: process.env.JWT_EXPIRES_IN || '8h',

@@ -8,7 +8,8 @@ const { menuRules, handleValidationErrors } = require('../middleware/validate');
 const router = express.Router();
 const TABLE = `${config.snowScope}_daily_menu`;
 
-router.get('/', verifyToken, async (req, res, next) => {
+// HR/Manager only — raw menu-item table (the weekly menu view is served client-side).
+router.get('/', verifyToken, requireRole('hr', 'manager'), async (req, res, next) => {
     try {
         const response = await snowClient.get(`/${TABLE}`);
         res.json((response.data.result || []).map(item => ({

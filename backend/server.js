@@ -5,6 +5,7 @@ const config = require('./config');
 const logger = require('./services/logger');
 const { errorHandler, notFound } = require('./middleware/errorHandler');
 const { helmet, rateLimiter } = require('./middleware/security');
+const { verifyToken, requireRole } = require('./middleware/auth');
 const { initRealtime, broadcast } = require('./services/realtime');
 
 const app = express();
@@ -16,7 +17,8 @@ app.use(helmet);
 const allowedOrigins = [
     'http://localhost:3000',
     'http://127.0.0.1:3000',
-    process.env.FRONTEND_URL
+    process.env.FRONTEND_URL,
+    process.env.APP_BASE_URL   // the deployed origin (e.g. https://your-app.onrender.com)
 ].filter(Boolean);
 
 app.use(cors({
@@ -58,7 +60,7 @@ app.use('/api/webhooks', require('./routes/webhooks'));
 app.use('/api/feedback', require('./routes/feedback'));
 
 /* ── Real-time broadcast endpoint (HTTP trigger for WS push) ────────────── */
-app.post('/api/broadcast', async (req, res) => {
+app.post('/api/broadcast', verifyToken, requireRole('hr', 'manager'), async (req, res) => {
     const { channel, payload } = req.body;
     broadcast(channel, payload);
     res.json({ success: true, message: 'Broadcast sent.' });
@@ -82,7 +84,9 @@ process.on('unhandledRejection', (reason) => {
 });
 
 /* ── Start Server ─────────────────────────────────────────────────────────── */
-const server = app.listen(config.port, () => {
+let server;
+if (require.main === module) {
+server = app.listen(config.port, () => {
     logger.info(`Enterprise Workflow Hub Server running on http://localhost:${config.port}`);
     console.log(`Enterprise Workflow Hub Server running on http://localhost:${config.port}`);
     console.log('Press Ctrl+C to stop the server.');
@@ -101,5 +105,6 @@ server.on('error', (err) => {
     }
     process.exit(1);
 });
+}
 
 module.exports = app;

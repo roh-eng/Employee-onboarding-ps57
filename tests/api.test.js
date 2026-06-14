@@ -11,12 +11,18 @@
  *  - Response shape / contract tests
  */
 
+process.env.NODE_ENV = process.env.NODE_ENV || 'test';
+process.env.JWT_SECRET = process.env.JWT_SECRET || 'test-only-jwt-secret';
+process.env.SERVICENOW_INSTANCE = process.env.SERVICENOW_INSTANCE || 'https://example.invalid';
+process.env.SERVICENOW_USERNAME = process.env.SERVICENOW_USERNAME || 'test-user';
+process.env.SERVICENOW_PASSWORD = process.env.SERVICENOW_PASSWORD || 'test-pass';
+process.env.SERVICENOW_SCOPE = process.env.SERVICENOW_SCOPE || 'x_1850353_employ_0';
+
 const assert = require('assert');
 const jwt = require('jsonwebtoken');
+const request = require('supertest');
+const app = require('../backend/server');
 
-const BASE = process.env.TEST_BASE || 'http://localhost:3000/api';
-// SECURITY: JWT_SECRET must come from CI environment (set in .github/workflows/ci.yml)
-// No hardcoded fallback — matches the production config security policy.
 const JWT_SECRET = process.env.JWT_SECRET;
 
 /* ── Mock JWT Generator ───────────────────────────────────────────────────── */
@@ -68,36 +74,31 @@ const mockSprintTaskRecords = [
 
 async function post(path, body, token = null) {
     const headers = { 'Content-Type': 'application/json' };
-    if (token) headers['Authorization'] = `Bearer ${token}`;
-    const res = await fetch(`${BASE}${path}`, { method: 'POST', headers, body: JSON.stringify(body) });
-    const data = await res.json().catch(() => ({}));
-    return { status: res.status, data };
+    if (token) headers.Authorization = `Bearer ${token}`;
+    const res = await request(app).post(`/api${path}`).set(headers).send(body);
+    return { status: res.status, data: res.body || {} };
 }
 
 async function get(path, token = null) {
     const headers = {};
-    if (token) headers['Authorization'] = `Bearer ${token}`;
-    const res = await fetch(`${BASE}${path}`, { headers });
-    const data = await res.json().catch(() => ({}));
-    return { status: res.status, data };
+    if (token) headers.Authorization = `Bearer ${token}`;
+    const res = await request(app).get(`/api${path}`).set(headers);
+    return { status: res.status, data: res.body || {} };
 }
 
 async function put(path, body, token = null) {
     const headers = { 'Content-Type': 'application/json' };
-    if (token) headers['Authorization'] = `Bearer ${token}`;
-    const res = await fetch(`${BASE}${path}`, { method: 'PUT', headers, body: JSON.stringify(body) });
-    const data = await res.json().catch(() => ({}));
-    return { status: res.status, data };
+    if (token) headers.Authorization = `Bearer ${token}`;
+    const res = await request(app).put(`/api${path}`).set(headers).send(body);
+    return { status: res.status, data: res.body || {} };
 }
 
 async function del(path, token = null) {
     const headers = {};
-    if (token) headers['Authorization'] = `Bearer ${token}`;
-    const res = await fetch(`${BASE}${path}`, { method: 'DELETE', headers });
-    const data = await res.json().catch(() => ({}));
-    return { status: res.status, data };
+    if (token) headers.Authorization = `Bearer ${token}`;
+    const res = await request(app).delete(`/api${path}`).set(headers);
+    return { status: res.status, data: res.body || {} };
 }
-
 /**
  * Checks whether the test server has a real ServiceNow backend.
  * When ServiceNow is unreachable (CI environment), CRUD responses will be
@@ -216,9 +217,8 @@ async function testStatsEndpoint() {
 
 async function testBroadcastEndpoint() {
     const { status: s1 } = await post('/broadcast', { channel: 'test', payload: {} });
-    // 200 when WebSocket clients connected, still 200 with empty client list
-    assert.ok(s1 === 200 || s1 === 204, `POST /broadcast should succeed, got ${s1}`);
-    console.log('✅ Broadcast endpoint passed');
+    assert.strictEqual(s1, 401, 'POST /broadcast without token -> 401');
+    console.log('Broadcast endpoint security passed');
 }
 
 async function testEmployeesSecurity() {
@@ -270,10 +270,9 @@ async function testErrorPropagation() {
 }
 
 async function testCorsHeaders() {
-    const res = await fetch(`${BASE}/health`, { method: 'OPTIONS' });
-    // CORS middleware should be active
+    const res = await request(app).options('/api/health');
     assert.ok(res.status === 204 || res.status === 200, 'CORS preflight should be handled');
-    console.log('\u2705 CORS headers present');
+    console.log('CORS headers present');
 }
 
 async function testResponseTime() {

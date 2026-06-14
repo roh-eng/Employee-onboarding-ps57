@@ -25,10 +25,22 @@ function pushLive(item) {
 const memoryStore = [];
 let memoryId = 1;
 
+/* The live notification table has only `message` + `recipient` + `read` columns
+ * (no `title`/`type`), so fold any title into the message text before persisting. */
+function composeMessage(title, message) {
+    const t = (title || '').toString().trim();
+    const m = (message || '').toString().trim();
+    return t && m ? `${t}: ${m}` : (t || m);
+}
+
 function getUserFilter(req) {
-    // Admins see all; others see only their own or broadcast notifications
+    // Admins see all; others see only their own or "ALL" (broadcast) notifications.
+    // NOTE: the live table has columns `message`, `recipient`, `read` only — there is
+    // no `type` column, so we must NOT reference it here (doing so makes ServiceNow
+    // return 403 and employees get zero notifications). Use the IN operator so the
+    // later `^read=false` AND-combines correctly for the unread count.
     if (req.user.role === 'hr') return null;
-    return `recipient=${req.user.userId}^ORrecipient=ALL^ORtype=Broadcast`;
+    return `recipientIN${req.user.userId},ALL`;
 }
 
 /* ── GET all notifications ──────────────────────────────────────────────── */
@@ -60,15 +72,10 @@ router.get('/', verifyToken, async (req, res, next) => {
 /* ── POST create notification ───────────────────────────────────────────── */
 router.post('/', verifyToken, requireRole('hr', 'manager'), async (req, res, next) => {
     try {
-        const payload = {
-            title: req.body.title,
-            message: req.body.message,
-            type: req.body.type || 'Info',
-            recipient: req.body.recipient || 'ALL'
-        };
-        const response = await snowClient.post(`/${TABLE}`, payload);
+        const live = { message: composeMessage(req.body.title, req.body.message), recipient: req.body.recipient || 'ALL' };
+        const response = await snowClient.post(`/${TABLE}`, live);
         logger.info('Notification created', { id: response.data.result?.sys_id });
-        pushLive(payload);
+        pushLive({ title: req.body.title, message: req.body.message, type: req.body.type || 'Info', recipient: live.recipient });
         res.status(201).json({ success: true, data: response.data.result });
     } catch (err) {
         // In-memory fallback when ServiceNow table missing
@@ -123,15 +130,10 @@ router.delete('/:id', verifyToken, requireRole('hr'), async (req, res, next) => 
 router.post('/broadcast', verifyToken, requireRole('hr', 'manager'), async (req, res, next) => {
     try {
         const { title, message, target } = req.body; // target: 'ALL', 'HR', 'IT', 'Employees'
-        const payload = {
-            title: title || 'Broadcast Alert',
-            message: message || '',
-            type: 'Broadcast',
-            recipient: target || 'ALL'
-        };
-        const response = await snowClient.post(`/${TABLE}`, payload);
+        const recipient = target || 'ALL';
+        const response = await snowClient.post(`/${TABLE}`, { message: composeMessage(title || 'Broadcast Alert', message), recipient });
         logger.info('Broadcast sent', { id: response.data.result?.sys_id, target });
-        pushLive(payload);
+        pushLive({ title: title || 'Broadcast Alert', message: message || '', type: 'Broadcast', recipient });
         res.status(201).json({ success: true, data: response.data.result });
     } catch (err) {
         const item = {
@@ -171,7 +173,7 @@ router.post('/email-alert', verifyToken, requireRole('hr', 'manager'), async (re
         let data;
         let storeNote = 'Notification created.';
         try {
-            const response = await snowClient.post(`/${TABLE}`, payload);
+            const response = await snowClient.post(`/${TABLE}`, { message: composeMessage(payload.title, payload.message), recipient: payload.recipient });
             data = response.data.result;
             logger.info('Email alert notification created', { id: data?.sys_id, to });
         } catch (snErr) {
@@ -193,7 +195,7 @@ router.post('/email-alert', verifyToken, requireRole('hr', 'manager'), async (re
         if (/.+@.+\..+/.test(to)) {
             const result = await sendMail({ to, subject, text: body });
             emailNote = result.sent
-                ? `Email sent to ${to}.`
+                ? (result.previewUrl ? `Email sent to ${to} — test preview: ${result.previewUrl}` : `Email sent to ${to}.`)
                 : `Email not sent (${result.reason}).`;
         } else {
             emailNote = smtpConfigured()

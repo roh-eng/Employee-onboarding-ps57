@@ -31,11 +31,11 @@
                     <i class="fa-solid fa-chart-line"></i> <span data-i18n="companyOverview">Company Overview</span>
                 </li>
                 <!-- HR only -->
-                <li data-view="employees" data-roles="hr">
+                <li data-view="employees" data-roles="hr,manager,employee">
                     <i class="fa-solid fa-users"></i> <span data-i18n="hrDashboard">HR Dashboard</span>
                 </li>
                 <!-- HR and Manager -->
-                <li data-view="tasks" data-roles="hr,manager">
+                <li data-view="tasks" data-roles="hr,manager,employee">
                     <i class="fa-solid fa-list-check"></i> <span data-i18n="employeeTasks">Employee Tasks</span>
                 </li>
                 <!-- All roles -->
@@ -50,20 +50,20 @@
                 </li>
 
                 <!-- Stage 2 -->
-                <li data-view="projects" data-roles="hr,manager"
+                <li data-view="projects" data-roles="hr,manager,employee"
                     style="margin-top:16px;border-top:1px solid rgba(255,255,255,0.05);border-radius:0;padding-top:24px;">
                     <i class="fa-solid fa-diagram-project"></i> <span data-i18n="projectDelivery">Project Delivery</span>
                 </li>
-                <li data-view="slas" data-roles="hr,manager">
+                <li data-view="slas" data-roles="hr,manager,employee">
                     <i class="fa-solid fa-stopwatch"></i> <span data-i18n="slaIntelligence">SLA Intelligence</span>
                 </li>
                 <li data-view="performance" data-roles="hr,manager,employee">
                     <i class="fa-solid fa-chart-pie"></i> <span data-i18n="myPerformance">My Performance</span>
                 </li>
-                <li data-view="reports" data-roles="hr,manager">
+                <li data-view="reports" data-roles="hr,manager,employee">
                     <i class="fa-solid fa-file-export"></i> <span data-i18n="reports">Reports</span>
                 </li>
-                <li data-view="webhooks" data-roles="hr">
+                <li data-view="webhooks" data-roles="hr,manager,employee">
                     <i class="fa-solid fa-plug"></i> <span data-i18n="integrations">Integrations</span>
                 </li>
 
@@ -71,15 +71,7 @@
                     <i class="fa-solid fa-sun"></i> <span>Light Mode</span>
                 </li>
             </ul>
-            <div style="padding:0 24px 12px;">
-                <label for="lang-select" style="display:block;font-size:0.72rem;text-transform:uppercase;letter-spacing:0.06em;color:#9ca3af;margin-bottom:6px;" data-i18n="language">Language</label>
-                <select id="lang-select" class="form-control" style="padding:8px 12px;">
-                    <option value="en">English</option>
-                    <option value="es">Espanol</option>
-                    <option value="fr">Francais</option>
-                </select>
-            </div>
-            <div style="padding:24px;padding-top:0;">
+            <div style="padding:24px;">
                 <button id="logout-btn" class="btn btn-outline"
                     style="width:100%;justify-content:center;color:#9ca3af;border-color:rgba(255,255,255,0.1);"
                     onclick="logout()">
@@ -95,6 +87,9 @@
                 <div class="header-right">
                     <div class="connection-status">
                         <span class="status-dot"></span> <span data-i18n="connected">Connected to ServiceNow PDI</span>
+                    </div>
+                    <div class="help-btn" onclick="startTour()" title="Help — Take Product Tour">
+                        <i class="fa-solid fa-circle-question"></i>
                     </div>
                     <div class="notification-bell" id="notification-bell" title="Notifications">
                         <i class="fa-regular fa-bell"></i>
@@ -156,8 +151,8 @@
 
         document.getElementById('user-name-display').textContent = userName;
         document.getElementById('user-role-display').textContent =
-            userRole === 'hr' ? 'HR Manager' :
-            userRole === 'manager' ? 'Project Manager' : 'Employee';
+            userRole === 'hr' ? 'Administrator' :
+            userRole === 'manager' ? 'Manager' : 'Employee';
         document.getElementById('user-avatar').src =
             `https://ui-avatars.com/api/?name=${encodeURIComponent(userName)}&background=0e7490&color=fff`;
 

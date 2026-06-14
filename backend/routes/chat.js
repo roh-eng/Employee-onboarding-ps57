@@ -2,9 +2,34 @@ const express = require('express');
 const axios = require('axios');
 const config = require('../config');
 const snowClient = require('../services/snowClient');
+const logger = require('../services/logger');
 const { verifyToken } = require('../middleware/auth');
 
 const router = express.Router();
+
+// Local assistant for greetings / help / common onboarding intents — answered WITHOUT
+// calling Gemini, so these ALWAYS work even when the external AI quota is exhausted.
+function quickReply(raw) {
+    const m = String(raw || '').trim().toLowerCase();
+    if (!m) return null;
+    const has = (...w) => w.some(x => m.includes(x));
+    const GUIDE = "👋 Hi! I'm your Onboarding Assistant. I can help you with:\n\n" +
+        "• **My Tasks** — view & complete your onboarding checklist (Employee Tasks)\n" +
+        "• **Report Issue** — raise an IT/HR ticket\n" +
+        "• **Feedback** — share your onboarding experience\n" +
+        "• **My Profile** — see your onboarding status & progress\n" +
+        "• **Daily Menu** — this week's cafeteria menu\n\n" +
+        "Try: *\"how do I complete a task\"*, *\"how do I report an issue\"*, or *\"what's my onboarding status\"*.";
+    if (m === 'hi' || m === 'hello' || m === 'help' || /^(hi|hello|hey|hiya|yo|help|good morning|good afternoon|good evening)\b/.test(m)) return GUIDE;
+    if (has('complete') && has('task')) return "To complete a task, open **Employee Tasks**, find the task and click **Complete**. Your **progress** updates automatically on **My Profile**.";
+    if (has('report') && (has('issue') || has('ticket') || has('problem'))) return "Go to **Report Issue**, describe the problem, choose a priority and submit — it raises a ticket in ServiceNow.";
+    if (has('feedback') || has('survey')) return "Open **Feedback**, pick a category and rating, and tell us about your experience. HR reviews every submission.";
+    if (has('status') || has('progress') || has('onboard')) return "Your onboarding **status** and **progress %** appear on **My Profile** and the **Overview** dashboard — they update as you complete tasks and HR approves your onboarding.";
+    if (has('password') || has('login') || has('log in') || has('sign in')) return "Set your password using the **link in your welcome email**, then sign in with your **email** on the login page.";
+    if (has('lunch') || has('menu') || has('food') || has('cafeteria')) return "Check **Daily Menu** for this week's cafeteria menu — it rotates weekly and highlights today.";
+    if (has('thank')) return "You're welcome! 🙌 Type **help** any time to see what I can do.";
+    return null;
+}
 
 router.post('/', verifyToken, async (req, res, next) => {
     try {
@@ -13,6 +38,16 @@ router.post('/', verifyToken, async (req, res, next) => {
         if (!userMessage || userMessage.trim().length === 0) {
             return res.status(400).json({ error: 'Message is required' });
         }
+
+        // In test mode, return a deterministic canned reply — no external Gemini or
+        // ServiceNow calls, so the suite is fast, deterministic and quiet.
+        if (config.nodeEnv === 'test') {
+            return res.json({ reply: 'AI assistant (test mode): this is a canned response.' });
+        }
+
+        // Greetings / help / common onboarding intents are answered locally (no Gemini).
+        const quick = quickReply(userMessage);
+        if (quick) return res.json({ reply: quick });
 
         // Fetch live ServiceNow data for context
         let projectContext = '';
@@ -86,19 +121,14 @@ Answer helpfully and concisely. For project-related questions, reference the liv
 
         res.json({ reply });
     } catch (err) {
-        // Log the error for debugging
-        console.error('Gemini API Error:', err.message);
-        
-        // Provide user-friendly error message
-        if (err.response && err.response.status === 429) {
-            return res.json({ 
-                reply: 'I am currently experiencing high demand. Please try again in a moment.' 
-            });
-        }
-        
-        res.json({ 
-            reply: 'I apologize, but I am experiencing technical difficulties. Please try again later.' 
-        });
+        logger.error('Gemini API Error', { error: err.message });
+        const status = err.response && err.response.status;
+        // Always leave the user with something useful, not just an error.
+        const help = "I can't reach the AI service right now, but I can still help with the basics — type **help** to see options, or use **Employee Tasks**, **Report Issue**, or **Feedback** from the menu.";
+        if (status === 429) return res.json({ reply: 'The AI service is busy right now (usage quota reached). ' + help });
+        if (status === 401 || status === 403) return res.json({ reply: 'The AI service key is invalid or not authorized. ' + help });
+        if (err.code === 'ECONNABORTED') return res.json({ reply: 'The AI service timed out. ' + help });
+        res.json({ reply: 'The AI assistant is temporarily unavailable. ' + help });
     }
 });
 

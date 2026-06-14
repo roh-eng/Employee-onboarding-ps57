@@ -19,7 +19,8 @@ const formatTask = (sysObj) => ({
     priority: sysObj.priority?.display_value ?? sysObj.priority
 });
 
-router.get('/', verifyToken, async (req, res, next) => {
+// HR/Manager only — full task list across all employees (employees see their own via demo fallback).
+router.get('/', verifyToken, requireRole('hr', 'manager'), async (req, res, next) => {
     try {
         const response = await snowClient.get(`/${TABLE}?sysparm_display_value=all`);
         res.json((response.data.result || []).map(formatTask));

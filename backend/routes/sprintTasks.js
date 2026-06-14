@@ -13,7 +13,8 @@ const getVal = (field, fallback = '') => {
     return field;
 };
 
-router.get('/', verifyToken, async (req, res, next) => {
+// HR/Manager only — full sprint board (employees get a read-only demo view).
+router.get('/', verifyToken, requireRole('hr', 'manager'), async (req, res, next) => {
     try {
         const response = await snowClient.get(`/${TABLE}?sysparm_display_value=all`);
         const formatted = (response.data.result || []).map(task => ({
