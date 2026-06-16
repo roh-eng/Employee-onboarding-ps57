@@ -6,6 +6,8 @@
 
 A production-ready, full-stack enterprise application that bridges a modern Node.js backend with **ServiceNow PDI** (Personal Developer Instance) to deliver end-to-end employee onboarding, project delivery, SLA intelligence, real-time dashboards, and an in-app Help Assistant.
 
+**🌍 Live Demo:** [https://enterprise-workflow-hub.onrender.com/login.html](https://enterprise-workflow-hub.onrender.com/login.html)
+
 ---
 
 ## Table of Contents
